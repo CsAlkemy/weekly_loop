@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { TeamEvent } from "@repo/library";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { sessionKey } from "@/hooks/use-auth";
 import { teamKey } from "@/hooks/use-teams";
 
 function socketBase(): string {
@@ -25,12 +26,14 @@ export function useTeamChannel(teamId: string | undefined): boolean {
     let disposed = false;
 
     const connect = () => {
+      let opened = false;
       socket = new WebSocket(`${socketBase()}/api/ws/teams/${teamId}`);
 
       socket.onmessage = (message) => {
         const event = JSON.parse(String(message.data)) as TeamEvent;
 
         if (event.type === "connected") {
+          opened = true;
           attempts = 0;
           setLive(true);
           if (everConnected) {
@@ -47,6 +50,7 @@ export function useTeamChannel(teamId: string | undefined): boolean {
       socket.onclose = () => {
         setLive(false);
         if (disposed) return;
+        if (!opened) void queryClient.invalidateQueries({ queryKey: sessionKey });
         retry = setTimeout(connect, Math.min(1000 * 2 ** attempts, MAX_RETRY_MS));
         attempts += 1;
       };

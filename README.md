@@ -70,16 +70,18 @@ Code layout: [docs/conventions.md](docs/conventions.md).
 
 ## Known limitations
 
-- Live updates use an in-process hub, so the API runs as one worker. The clock restarts from
-  `APP_NOW` when the API restarts.
+- Live updates use an in-process hub, so the API runs as one worker. After an API restart the
+  clock resumes from the latest recorded time (never earlier than `APP_NOW`), so a running
+  meeting's section timer restarts near 0:00 instead of keeping its elapsed seconds.
 - Scores and Issue priority are last save wins, with no lost-update protection.
 - Meeting summaries are computed on read; freezing them is described, not built.
 - "Observers own nothing" is enforced by the API, not a database constraint.
 - Every seeded user shares one password, which "Use a demo account" hands out; set
   `DEMO_ACCOUNTS=false` outside a demo. No sign-up, password reset by email, login rate limit or
   user removal. Measurables cannot be edited or removed.
-- Without `SESSION_SECRET` the API picks a random one at start, which signs everyone out on restart.
-  The cookie is not marked Secure, so a deployment needs HTTPS and that flag.
+- Without `SESSION_SECRET` the API generates one and keeps it in `SESSION_SECRET_FILE` (a Docker
+  volume), so a restart does not sign anyone out. The cookie is not marked Secure, so a deployment
+  needs HTTPS and that flag.
 - A role or team change applies on the user's next request; an open page keeps its buttons until
   it reloads. Lists are not paginated.
 

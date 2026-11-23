@@ -1,6 +1,12 @@
 import { useRouter } from "next/router";
 
-import type { ApiError, DemoAccounts, LoginInput, User } from "@repo/library";
+import {
+  isApiError,
+  type ApiError,
+  type DemoAccounts,
+  type LoginInput,
+  type User,
+} from "@repo/library";
 import { apiRequest, apiUrl, useApiQuery } from "@repo/library/apis";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -16,7 +22,8 @@ export function useSession() {
         const user = await apiRequest<User>("get", apiUrl("auth", "me"));
         setAuthHint(true);
         return user;
-      } catch {
+      } catch (error) {
+        if (!isApiError(error) || error.status !== 401) throw error;
         setAuthHint(false);
         return null;
       }
