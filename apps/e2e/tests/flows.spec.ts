@@ -14,17 +14,18 @@ const live = (page: Page) => expect(page.getByText("Live", { exact: true })).toB
 test("a To-Do added for a teammate reaches them live, and an Observer sees it read-only", async ({
   browser,
 }) => {
-  const casey = await signedInBrowser(browser, "Casey Cho", "To-Dos");
+  const avery = await signedInBrowser(browser, "Avery Admin", "To-Dos");
   const dana = await signedInBrowser(browser, "Dana Diaz", "To-Dos");
   const ellis = await signedInBrowser(browser, "Ellis Evans", "To-Dos");
   await Promise.all([live(dana), live(ellis)]);
   await expect(ellis.getByRole("button", { name: "Add To-Do" })).toHaveCount(0);
+  await expect(dana.getByRole("button", { name: "Add To-Do" })).toHaveCount(0);
 
-  await casey.locator("#todos").getByRole("button", { name: "Add To-Do" }).click();
-  const drawer = casey.getByRole("dialog", { name: "Add a To-Do" });
+  await avery.locator("#todos").getByRole("button", { name: "Add To-Do" }).click();
+  const drawer = avery.getByRole("dialog", { name: "Add a To-Do" });
   await drawer.getByLabel("What needs doing?").fill("Book the offsite venue");
   await drawer.getByRole("combobox", { name: "Owner", exact: true }).click();
-  await casey.getByRole("option", { name: "Dana Diaz" }).click();
+  await avery.getByRole("option", { name: "Dana Diaz" }).click();
   await drawer.getByRole("button", { name: "Add To-Do" }).click();
   await expect(drawer).toBeHidden();
 
@@ -39,7 +40,7 @@ test("a To-Do added for a teammate reaches them live, and an Observer sees it re
   await expect(forEllis.getByRole("checkbox")).toBeDisabled({ timeout: 2000 });
 
   await forDana.getByRole("checkbox", { name: 'Mark "Book the offsite venue" done' }).click();
-  await expect(openTodos(casey)).not.toContainText("Book the offsite venue", { timeout: 2000 });
+  await expect(openTodos(avery)).not.toContainText("Book the offsite venue", { timeout: 2000 });
   await expect(openTodos(ellis)).not.toContainText("Book the offsite venue", { timeout: 2000 });
 });
 
@@ -79,19 +80,19 @@ test("a Rock's progress and status move for everyone as Milestones are ticked", 
   await expect(ellis.getByRole("checkbox")).toHaveCount(0);
 });
 
-test("a Measurable added by a Team Member appears live for an Observer", async ({ browser }) => {
-  const blake = await signedInBrowser(browser, "Blake Brooks", "Scorecard");
+test("a Measurable added by an Admin appears live for an Observer", async ({ browser }) => {
+  const avery = await signedInBrowser(browser, "Avery Admin", "Scorecard");
   const ellis = await signedInBrowser(browser, "Ellis Evans", "Scorecard");
   await live(ellis);
 
-  await blake.locator("#scorecard").getByRole("button", { name: "New measurable" }).click();
-  const dialog = blake.getByRole("dialog", { name: "New measurable" });
+  await avery.locator("#scorecard").getByRole("button", { name: "New measurable" }).click();
+  const dialog = avery.getByRole("dialog", { name: "New measurable" });
   await dialog.getByLabel("What do you measure?").fill("Demo calls booked");
   await dialog.getByLabel("Number", { exact: true }).fill("12");
   await dialog.getByRole("button", { name: "Add measurable" }).click();
 
   const row = ellis.locator("#scorecard").getByRole("row", { name: /Demo calls booked/ });
   await expect(row).toContainText("At least 12", { timeout: 2000 });
-  await expect(row.getByRole("button", { name: "Owner: Blake Brooks" })).toBeVisible();
+  await expect(row.getByRole("button", { name: "Owner: Avery Admin" })).toBeVisible();
   await expect(row.getByRole("button", { name: /Edit score/ })).toHaveCount(0);
 });

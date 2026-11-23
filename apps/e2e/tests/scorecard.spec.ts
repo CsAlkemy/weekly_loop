@@ -214,21 +214,22 @@ test("the owner's name shows on hover and a trend opens from the chart button", 
   await expect(trend.getByText("Last week", { exact: true })).toBeVisible();
 });
 
-test("a Team Member adds a measurable and everyone sees it", async ({ browser, request }) => {
+test("an Admin adds a measurable and everyone sees it", async ({ browser, request }) => {
   await turnOnTestForms(request);
-  const casey = await signedInBrowser(browser, "Casey Cho", "Scorecard");
+  const avery = await signedInBrowser(browser, "Avery Admin", "Scorecard");
   const dana = await signedInBrowser(browser, "Dana Diaz", "Scorecard");
   await expect(dana.getByText("Live", { exact: true })).toBeVisible();
+  await expect(scorecard(dana).getByRole("button", { name: "New measurable" })).toHaveCount(0);
 
-  await scorecard(casey).getByRole("button", { name: "New measurable" }).click();
-  const dialog = casey.getByRole("dialog", { name: "New measurable" });
+  await scorecard(avery).getByRole("button", { name: "New measurable" }).click();
+  const dialog = avery.getByRole("dialog", { name: "New measurable" });
   await dialog.getByRole("button", { name: "Add measurable" }).click();
   await expect(dialog.getByText("Name the number you track")).toBeVisible();
   await expect(dialog.getByText("Enter a number")).toBeVisible();
 
   await dialog.getByLabel("What do you measure?").fill("Qualified leads");
   await dialog.getByRole("combobox", { name: "Weekly goal" }).click();
-  await casey.getByRole("option", { name: "Between" }).click();
+  await avery.getByRole("option", { name: "Between" }).click();
   await dialog.getByLabel("From").fill("40");
   await dialog.getByLabel("To").fill("20");
   await dialog.getByRole("button", { name: "Add measurable" }).click();
@@ -239,10 +240,10 @@ test("a Team Member adds a measurable and everyone sees it", async ({ browser, r
   await dialog.getByRole("button", { name: "Add measurable" }).click();
   await expect(dialog).toBeHidden();
 
-  for (const page of [casey, dana]) {
+  for (const page of [avery, dana]) {
     const row = scorecard(page).getByRole("row", { name: /Qualified leads/ });
     await expect(row).toContainText("Between 20 and 40", { timeout: 2000 });
-    await expect(row.getByRole("button", { name: "Owner: Casey Cho" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Owner: Avery Admin" })).toBeVisible();
   }
-  await expect(cell(casey, /Qualified leads, week of Nov 2: no score, Pending/)).toBeVisible();
+  await expect(cell(avery, /Qualified leads, week of Nov 2: no score, Pending/)).toBeVisible();
 });

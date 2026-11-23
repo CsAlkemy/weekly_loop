@@ -31,10 +31,11 @@ function TestFormsCard() {
           <div className="flex items-center justify-between gap-4 rounded-2xl border border-border p-4">
             <div>
               <p id="test-forms-label" className="font-semibold">
-                Turn on all test forms
+                Turn on test forms for me
               </p>
               <p className="text-sm text-muted-foreground">
-                Applies to everyone. Observers still cannot change anything.
+                Saved on your profile and off by default. Only you see them; other Admins, Team
+                Members and Observers never do.
               </p>
             </div>
             <Switch
@@ -46,7 +47,9 @@ function TestFormsCard() {
                   { testForms },
                   {
                     onSuccess: () =>
-                      toast.success(testForms ? "Test forms are on" : "Test forms are off"),
+                      toast.success(
+                        testForms ? "Test forms are on for you" : "Test forms are off for you",
+                      ),
                     onError: (failure) => toast.error(failure.message),
                   },
                 )

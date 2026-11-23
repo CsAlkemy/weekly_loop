@@ -55,7 +55,6 @@ class Company(Base):
     id: Mapped[str] = mapped_column(primary_key=True)
     name: Mapped[str]
     timezone: Mapped[str]
-    test_forms_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
 
 
 class Team(Base):
@@ -76,6 +75,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(unique=True)
     role: Mapped[Role] = mapped_column(Text)
     password_hash: Mapped[str | None]
+    test_forms_enabled: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
 
 
 class Membership(Base):

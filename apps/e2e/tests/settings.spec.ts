@@ -1,8 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { openPage, resetData, signIn, turnOnTestForms } from "./helpers";
+import {
+  closeBrowsers,
+  openPage,
+  resetData,
+  signedInBrowser,
+  signIn,
+  turnOnTestForms,
+} from "./helpers";
 
 test.beforeEach(({ request }) => resetData(request));
+test.afterEach(closeBrowsers);
 
 const nav = (page: Page) => page.getByRole("navigation", { name: "Primary" });
 
@@ -16,13 +24,13 @@ async function openSettings(page: Page) {
   await expect(page).toHaveURL(/\/admin\/settings\/testing$/);
 }
 
-test("an Admin turns the test forms on and off for everyone", async ({ page }) => {
+test("an Admin turns the test forms on and off for themselves only", async ({ page, browser }) => {
   await signIn(page, "Avery Admin");
   await openPage(page, "To-Dos");
   await expect(page.getByRole("button", { name: "Add To-Do" })).toHaveCount(0);
 
   await openSettings(page);
-  const testForms = page.getByRole("switch", { name: "Turn on all test forms" });
+  const testForms = page.getByRole("switch", { name: "Turn on test forms for me" });
   await expect(testForms).toHaveAttribute("aria-checked", "false");
   await testForms.click();
   await expect(testForms).toHaveAttribute("aria-checked", "true");
@@ -32,6 +40,10 @@ test("an Admin turns the test forms on and off for everyone", async ({ page }) =
   await openPage(page, "Rocks");
   await expect(page.getByRole("button", { name: "Add Rock" })).toBeVisible();
   await expect(page.getByText("Testing", { exact: true })).toHaveCount(0);
+
+  const blake = await signedInBrowser(browser, "Blake Brooks", "Rocks");
+  await expect(blake.getByRole("button", { name: "Add Rock" })).toHaveCount(0);
+  await expect(blake.getByText("Refresh brand").first()).toBeVisible();
 
   await openSettings(page);
   await testForms.click();
@@ -59,7 +71,7 @@ test("reset to seed data removes what was added and keeps the switch", async ({
   const dialog = page.getByRole("dialog", { name: "Reset all data?" });
   await dialog.getByRole("button", { name: "Reset everything" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("switch", { name: "Turn on all test forms" })).toHaveAttribute(
+  await expect(page.getByRole("switch", { name: "Turn on test forms for me" })).toHaveAttribute(
     "aria-checked",
     "true",
   );

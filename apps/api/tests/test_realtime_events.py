@@ -45,15 +45,6 @@ async def test_user_and_role_changes_refresh_every_team_in_the_company(client):
         assert socket.events == [REFRESH, REFRESH]
 
 
-async def test_the_test_forms_switch_refreshes_every_team(client):
-    await login(client, "u1")
-    async with listening("team_lead", "team_ops") as sockets:
-        await client.patch("/api/settings", json={"testForms": True})
-
-    for socket in sockets.values():
-        assert socket.events == [REFRESH]
-
-
 async def test_a_failed_hand_off_to_other_processes_does_not_fail_the_save(client, monkeypatch):
     class Broken:
         def connect(self):

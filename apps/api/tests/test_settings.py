@@ -26,21 +26,29 @@ async def test_only_admins_change_settings_or_reset_the_data(client):
         assert (await client.post("/api/settings/reset-to-seed")).status_code == 403
 
 
-async def test_the_switch_turns_the_test_forms_on_and_off(client):
+async def test_the_switch_is_personal_to_the_admin_who_turns_it_on(client):
+    await login(client, "u1")
+    assert (await client.post(f"{LEAD}/todos", json=NEW_TODO)).status_code == 403
+    response = await client.patch("/api/settings", json={"testForms": True})
+    assert response.json() == {"testToolsAvailable": True, "testForms": True}
+    assert (await client.post(f"{LEAD}/todos", json=NEW_TODO)).status_code == 201
+
+    second_admin = {**NEW_USER, "role": "admin", "teamIds": []}
+    assert (await client.post("/api/users", json=second_admin)).status_code == 201
+    await client.post(
+        "/api/auth/login",
+        json={"email": NEW_USER["email"], "password": NEW_USER["password"]},
+    )
+    assert (await client.get("/api/settings")).json()["testForms"] is False
+    assert (await client.post(f"{LEAD}/todos", json=NEW_TODO)).status_code == 403
+
     await login(client, "u2")
+    assert (await client.get("/api/settings")).json()["testForms"] is False
     assert (await client.post(f"{LEAD}/todos", json=NEW_TODO)).status_code == 403
 
     await login(client, "u1")
-    response = await client.patch("/api/settings", json={"testForms": True})
-    assert response.json() == {"testToolsAvailable": True, "testForms": True}
-
-    await login(client, "u2")
-    assert (await client.post(f"{LEAD}/todos", json=NEW_TODO)).status_code == 201
-
-    await login(client, "u1")
+    assert (await client.get("/api/settings")).json()["testForms"] is True
     await client.patch("/api/settings", json={"testForms": False})
-
-    await login(client, "u2")
     assert (await client.post(f"{LEAD}/todos", json=NEW_TODO)).status_code == 403
 
 
@@ -62,7 +70,7 @@ async def test_reset_restores_the_seed_but_keeps_the_switch(client):
 
 
 async def test_adding_a_measurable_needs_the_test_forms(client):
-    await login(client, "u2")
+    await login(client, "u1")
     measurable = {
         "name": "Qualified leads",
         "ownerId": "u3",
@@ -71,7 +79,5 @@ async def test_adding_a_measurable_needs_the_test_forms(client):
     }
     assert (await client.post(f"{LEAD}/measurables", json=measurable)).status_code == 403
 
-    await login(client, "u1")
     await client.patch("/api/settings", json={"testForms": True})
-    await login(client, "u2")
     assert (await client.post(f"{LEAD}/measurables", json=measurable)).status_code == 201

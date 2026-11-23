@@ -21,7 +21,7 @@ from sqlalchemy import update  # noqa: E402
 
 from app.common.clock import Clock, get_clock  # noqa: E402
 from app.config.env import settings  # noqa: E402
-from app.db.models import Company  # noqa: E402
+from app.db.models import User  # noqa: E402
 from app.db.session import SessionLocal  # noqa: E402
 from app.db.setup import ensure_database, migrate  # noqa: E402
 from app.main import app  # noqa: E402
@@ -45,7 +45,7 @@ async def db(migrated_db):
 
 @pytest.fixture
 async def test_forms_on(db):
-    await db.execute(update(Company).values(test_forms_enabled=True))
+    await db.execute(update(User).where(User.role == "admin").values(test_forms_enabled=True))
     await db.commit()
 
 

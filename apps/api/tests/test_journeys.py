@@ -47,7 +47,7 @@ def resources(socket: RecordingSocket) -> list[str]:
 async def test_a_new_measurable_reaches_teammates_and_observers_but_not_other_teams(db):
     async with browsers(BLAKE, CASEY, ELLIS, FINLEY, AVERY) as (blake, casey, ellis, finley, avery):
         async with listening("team_lead", "team_sales") as sockets:
-            created = await blake.post(
+            created = await avery.post(
                 f"{LEAD}/measurables",
                 json={
                     "name": "Qualified leads",
@@ -139,11 +139,11 @@ async def test_an_off_track_score_becomes_an_issue_then_to_dos_for_named_people(
 
 
 async def test_ticking_a_to_do_counts_only_when_done_within_its_week(db, set_now):
-    async with browsers(CASEY, ELLIS) as (casey, ellis):
+    async with browsers(AVERY, CASEY, ELLIS) as (avery, casey, ellis):
         before = (await ellis.get(f"{LEAD}/todos")).json()["completion"]
         assert before == {"due": 10, "done": 9, "ratePercent": 90, "meetsTarget": True}
 
-        last_week = await casey.post(
+        last_week = await avery.post(
             f"{LEAD}/todos",
             json={"title": "Late report", "ownerId": CASEY, "dueDate": "2026-11-05"},
         )
@@ -156,7 +156,7 @@ async def test_ticking_a_to_do_counts_only_when_done_within_its_week(db, set_now
         after_late = (await ellis.get(f"{LEAD}/todos")).json()["completion"]
         assert after_late == after_add
 
-        this_week = await casey.post(
+        this_week = await avery.post(
             f"{LEAD}/todos",
             json={"title": "On-time task", "ownerId": CASEY, "dueDate": "2026-11-12"},
         )
@@ -206,12 +206,13 @@ async def test_a_rocks_status_and_progress_follow_its_milestones(db):
 
             done_url = f"{LEAD}/rocks/{rock['id']}/milestones/{lease['id']}/done"
             assert (await ellis.put(done_url)).status_code == 403
-            ticked = (await dana.put(done_url)).json()
+            assert (await dana.put(done_url)).status_code == 403
+            ticked = (await avery.put(done_url)).json()
             assert (ticked["status"], ticked["progressPercent"]) == ("on_track", 50)
 
             hired_url = f"{LEAD}/rocks/{rock['id']}/milestones/{hired['id']}/done"
-            assert (await dana.put(hired_url)).json()["progressPercent"] == 100
-            undone = (await dana.delete(done_url)).json()
+            assert (await avery.put(hired_url)).json()["progressPercent"] == 100
+            undone = (await avery.delete(done_url)).json()
             assert (undone["status"], undone["progressPercent"]) == ("off_track", 50)
 
             other_team = f"/api/teams/team_sales/rocks/{rock['id']}/milestones/{lease['id']}/done"

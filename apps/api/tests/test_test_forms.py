@@ -8,7 +8,7 @@ LEAD = "/api/teams/team_lead"
 
 
 async def test_test_forms_validate_their_input(client):
-    await login(client, "u2")
+    await login(client, "u1")
 
     for body in ({"title": " ", "ownerId": "u2"}, {"title": "X", "ownerId": ""}):
         assert (await client.post(f"{LEAD}/todos", json=body)).status_code == 422
@@ -25,7 +25,7 @@ async def test_test_forms_validate_their_input(client):
 
 
 async def test_a_to_do_without_a_due_date_is_due_in_seven_days(client):
-    await login(client, "u2")
+    await login(client, "u1")
     response = await client.post(f"{LEAD}/todos", json={"title": "Ring the bank", "ownerId": "u3"})
 
     assert response.status_code == 201
@@ -40,3 +40,10 @@ async def test_a_complete_rock_without_milestones_is_100_percent(client):
     )
 
     assert (response.json()["status"], response.json()["progressPercent"]) == ("complete", 100)
+
+
+async def test_only_admins_who_turned_them_on_can_use_the_test_forms(client):
+    for user_id in ("u2", "u5"):
+        await login(client, user_id)
+        response = await client.post(f"{LEAD}/todos", json={"title": "X", "ownerId": "u3"})
+        assert response.status_code == 403

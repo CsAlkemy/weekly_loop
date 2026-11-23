@@ -8,11 +8,10 @@ from app.common.schemas import ApiModel
 from app.common.shared_clock import share_clock
 from app.company_settings.deps import test_forms_on
 from app.config.env import settings
-from app.db.models import Company, Team
+from app.db.models import Team, User
 from app.db.session import SessionDep
 from app.realtime.hub import hub
 from app.seed import reset_to_seed
-from app.teams.service import company_team_ids
 
 router = APIRouter(prefix="/settings", tags=["settings"], responses=errors(401, 403, 409))
 
@@ -33,31 +32,25 @@ def require_test_tools() -> None:
         )
 
 
-async def set_test_forms(session: SessionDep, company_id: str, enabled: bool) -> None:
-    await session.execute(
-        update(Company).where(Company.id == company_id).values(test_forms_enabled=enabled)
-    )
-
-
-async def settings_out(session: SessionDep, company_id: str) -> SettingsOut:
+def settings_out(user: User) -> SettingsOut:
     return SettingsOut(
-        test_tools_available=settings.enable_test_tools,
-        test_forms=await test_forms_on(session, company_id),
+        test_tools_available=settings.enable_test_tools, test_forms=test_forms_on(user)
     )
 
 
-@router.get("", response_model=SettingsOut, summary="Company settings")
-async def read_settings(user: CurrentUser, session: SessionDep):
-    return await settings_out(session, user.company_id)
+@router.get("", response_model=SettingsOut, summary="Settings for the signed-in user")
+async def read_settings(user: CurrentUser):
+    return settings_out(user)
 
 
-@router.patch("", response_model=SettingsOut, summary="Turn the test forms on or off (Admin)")
+@router.patch(
+    "", response_model=SettingsOut, summary="Turn the test forms on or off for yourself (Admin)"
+)
 async def update_settings(body: SettingsIn, admin: Admin, session: SessionDep):
     require_test_tools()
-    await set_test_forms(session, admin.company_id, body.test_forms)
+    admin.test_forms_enabled = body.test_forms
     await session.commit()
-    await hub.refresh(await company_team_ids(session, admin.company_id))
-    return await settings_out(session, admin.company_id)
+    return settings_out(admin)
 
 
 @router.post(
@@ -67,10 +60,11 @@ async def update_settings(body: SettingsIn, admin: Admin, session: SessionDep):
 )
 async def reset_data(admin: Admin, session: SessionDep):
     require_test_tools()
-    switches = dict((await session.execute(select(Company.id, Company.test_forms_enabled))).all())
+    switched_on = list(await session.scalars(select(User.id).where(User.test_forms_enabled)))
     await reset_to_seed(session)
-    for company_id, enabled in switches.items():
-        await set_test_forms(session, company_id, enabled)
+    await session.execute(
+        update(User).where(User.id.in_(switched_on)).values(test_forms_enabled=True)
+    )
     await session.commit()
     clock.restart()
     await share_clock(session)

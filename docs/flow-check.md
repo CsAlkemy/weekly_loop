@@ -18,7 +18,7 @@ seeded user's password is `weekly-loop-demo`, or use "Use a demo account" on the
 
 ## 1. A new Measurable reaches the whole team, and only that team
 
-1. Blake: Scorecard → New measurable → "Demo calls booked", owner Casey, at least 12 → Add.
+1. Avery (test forms on): Scorecard → New measurable → "Demo calls booked", owner Casey, at least 12 → Add.
 2. Casey and Ellis (already on the Scorecard): the row appears within a second, no reload.
 3. Ellis: no "New measurable" button and the week cells are not editable.
 4. Finley: open `/teams/team_lead/scorecard` by URL → "No access to this team".
@@ -46,7 +46,7 @@ Tests: `test_an_off_track_score_becomes_an_issue_then_to_dos_for_named_people`,
 The completion card scores **last week** (Nov 2–8) and counts a To-Do only if it was done
 **before that week ended**.
 
-1. Casey: To-Dos → Add To-Do (Testing) → owner Casey, due date **Nov 5** (last week). The card
+1. Avery (test forms on): To-Dos → Add To-Do → owner Casey, due date **Nov 5** (last week). The card
    drops from 9 of 10 (90%) to 9 of 11 (82%): one more To-Do was due and is not done.
 2. Casey ticks it now → still 82%: done late counts as not done. It stops being overdue.
 3. Add another for Casey due **Nov 12** (this week) and tick it → last week's card does not move;
@@ -58,11 +58,11 @@ Tests: `test_ticking_a_to_do_counts_only_when_done_within_its_week`,
 
 ## 4. A Rock's status and progress follow its Milestones
 
-1. Avery: Rocks → Add Rock (Testing) → owner Dana, Milestones "Lease signed" due **Nov 10** and
+1. Avery (test forms on): Rocks → Add Rock → owner Dana, Milestones "Lease signed" due **Nov 10** and
    "Team hired" due Dec 15 → Add Rock.
 2. Everyone on Leadership, Ellis included: the Rock shows **Off track, 0%** (a Milestone is past
    due and not done).
-3. Avery or Dana: open the Rock and tick "Lease signed" → **On track, 50%** for everyone, live.
+3. Avery: open the Rock and tick "Lease signed" → **On track, 50%** for everyone, live.
    Tick "Team hired" → 100%. Untick "Lease signed" → back to Off track.
 4. Ellis sees the Milestones but has no checkboxes. Finley is refused the Leadership Rocks.
 
@@ -97,10 +97,11 @@ Tests: `tests/test_users.py`, `tests/users.spec.ts`.
 Admins have one **Settings** page (side nav, Admin group) with two tabs: Users & roles, and
 Testing tools, which has two tools:
 
-- **Turn on all test forms.** Shows "Add To-Do" on the To-Dos page, "Add Rock" on the Rocks page
-  and the Milestone checkboxes, for everyone at once. They are off by default: the brief has To-Dos
-  come only from Issues and Rocks only from the seed. They follow the same role rules (Admins and
-  Team Members only, owners must be on the team). The walkthrough above needs them on.
+- **Turn on test forms for me.** A personal setting saved on the Admin's profile, off by default.
+  It shows that Admin "Add To-Do", "Add Rock", the Milestone checkboxes and "New measurable".
+  Nobody else sees them, and the API refuses them for everyone else. The brief has To-Dos come
+  only from Issues and Rocks and Measurables only from the seed. Owners must be on the team. The
+  walkthrough above needs them on for Avery.
 - **Reset to seed data.** Replaces all data with the seed and restarts the clock at `APP_NOW`.
   People added on the Users & roles tab are removed and changed passwords go back to the seed
   password. The switch above keeps its position, and open pages refresh.

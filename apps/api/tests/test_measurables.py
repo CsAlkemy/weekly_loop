@@ -22,8 +22,8 @@ class RecordingSocket:
         self.events.append(event)
 
 
-async def test_a_team_member_adds_a_measurable_to_the_scorecard(client):
-    await login(client, "u2")
+async def test_an_admin_with_test_forms_on_adds_a_measurable(client):
+    await login(client, "u1")
     response = await client.post(URL, json={**LEADS, "name": "  Qualified leads  "})
 
     assert response.status_code == 201
@@ -39,7 +39,7 @@ async def test_a_team_member_adds_a_measurable_to_the_scorecard(client):
 
 
 async def test_weeks_before_a_measurable_existed_are_not_missed(client):
-    await login(client, "u2")
+    await login(client, "u1")
     measurable = (await client.post(URL, json=LEADS)).json()
 
     scored = await client.put(
@@ -51,7 +51,7 @@ async def test_weeks_before_a_measurable_existed_are_not_missed(client):
 
 
 async def test_a_between_goal_needs_two_numbers_in_order(client):
-    await login(client, "u2")
+    await login(client, "u1")
     response = await client.post(
         URL,
         json={**LEADS, "unit": "hours", "goal": {"type": "between", "min": 2, "max": 4}},
@@ -70,7 +70,7 @@ async def test_a_between_goal_needs_two_numbers_in_order(client):
 
 
 async def test_bad_names_units_and_duplicates_are_refused(client):
-    await login(client, "u2")
+    await login(client, "u1")
 
     assert (await client.post(URL, json={**LEADS, "name": "   "})).status_code == 422
     assert (await client.post(URL, json={**LEADS, "unit": "kg"})).status_code == 422
@@ -83,7 +83,7 @@ async def test_bad_names_units_and_duplicates_are_refused(client):
 
 
 async def test_the_owner_must_be_a_writer_on_this_team(client):
-    await login(client, "u2")
+    await login(client, "u1")
 
     for owner in ("u5", "u6", "u_nope"):
         response = await client.post(URL, json={**LEADS, "ownerId": owner})
@@ -91,7 +91,10 @@ async def test_the_owner_must_be_a_writer_on_this_team(client):
         assert response.json()["detail"] == "The owner must be an Admin or Team Member of this team"
 
 
-async def test_observers_and_other_teams_cannot_add_measurables(client):
+async def test_team_members_observers_and_other_teams_cannot_add_measurables(client):
+    await login(client, "u2")
+    assert (await client.post(URL, json=LEADS)).status_code == 403
+
     await login(client, "u5")
     assert (await client.post(URL, json=LEADS)).status_code == 403
 
@@ -104,7 +107,7 @@ async def test_adding_a_measurable_updates_the_team_live(client):
     hub.join("team_lead", lead)
     hub.join("team_sales", sales)
     try:
-        await login(client, "u2")
+        await login(client, "u1")
         await client.post(URL, json=LEADS)
     finally:
         hub.leave("team_lead", lead)
