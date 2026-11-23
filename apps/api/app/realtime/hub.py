@@ -14,6 +14,7 @@ from app.db.session import engine
 
 CHANNEL = "weekly_loop_events"
 RETRY_SECONDS = 1
+REFRESH = {"type": "refresh"}
 
 log = logging.getLogger(__name__)
 
@@ -49,21 +50,35 @@ class Hub:
     async def invalidate(self, team_id: str, resource: str) -> None:
         await self.publish(team_id, {"type": "invalidate", "resource": resource})
 
+    async def refresh(self, team_ids: list[str]) -> None:
+        for team_id in team_ids:
+            await self.publish(team_id, REFRESH)
+
+    async def _refresh_local(self) -> None:
+        for team_id in list(self._rooms):
+            await self.deliver(team_id, REFRESH)
+
     async def _notify(self, message: dict) -> None:
-        async with engine.connect() as connection:
-            await connection.execute(
-                text("SELECT pg_notify(:channel, :payload)"),
-                {"channel": CHANNEL, "payload": json.dumps(message)},
-            )
-            await connection.commit()
+        try:
+            async with engine.connect() as connection:
+                await connection.execute(
+                    text("SELECT pg_notify(:channel, :payload)"),
+                    {"channel": CHANNEL, "payload": json.dumps(message)},
+                )
+                await connection.commit()
+        except Exception:
+            log.exception("Could not pass a live update to the other API processes")
 
     async def listen(self, on_control: Callable[[dict], Awaitable[None]]) -> None:
         url = settings.database_url.replace("postgresql+psycopg://", "postgresql://")
+        reconnecting = False
         while True:
             try:
                 async with await psycopg.AsyncConnection.connect(url, autocommit=True) as conn:
                     await conn.execute(f"LISTEN {CHANNEL}")
                     self.listening.set()
+                    if reconnecting:
+                        await self._refresh_local()
                     async for note in conn.notifies():
                         message = json.loads(note.payload)
                         if message["origin"] == self.origin:
@@ -76,6 +91,7 @@ class Hub:
                 raise
             except Exception:
                 log.exception("Live update listener lost its connection; retrying")
+            reconnecting = True
             self.listening.clear()
             await asyncio.sleep(RETRY_SECONDS)
 

@@ -3,6 +3,8 @@ from fastapi import APIRouter, status
 from app.auth.deps import Admin
 from app.common.errors import errors
 from app.db.session import SessionDep
+from app.realtime.hub import hub
+from app.teams.service import company_team_ids
 from app.users import service
 from app.users.schemas import UserCreateIn, UserDetailOut, UserUpdateIn
 
@@ -21,7 +23,9 @@ async def list_users(admin: Admin, session: SessionDep):
     summary="Create a user with a role, teams and a password (Admin)",
 )
 async def create_user(body: UserCreateIn, admin: Admin, session: SessionDep):
-    return await service.create_user(session, admin.company_id, body)
+    created = await service.create_user(session, admin.company_id, body)
+    await hub.refresh(await company_team_ids(session, admin.company_id))
+    return created
 
 
 @router.patch(
@@ -30,4 +34,6 @@ async def create_user(body: UserCreateIn, admin: Admin, session: SessionDep):
     summary="Change a user's name, email, role, teams or password (Admin)",
 )
 async def update_user(user_id: str, body: UserUpdateIn, admin: Admin, session: SessionDep):
-    return await service.update_user(session, admin, user_id, body)
+    updated = await service.update_user(session, admin, user_id, body)
+    await hub.refresh(await company_team_ids(session, admin.company_id))
+    return updated

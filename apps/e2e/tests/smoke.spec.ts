@@ -63,6 +63,9 @@ test("a team the user is not on is refused", async ({ page }) => {
 
   await page.goto("/teams/team_lead");
   await expect(page.getByRole("heading", { name: "No access to this team" })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Scorecard" }),
+  ).toHaveCount(0);
 });
 
 test("a Rock expands to show its Milestones", async ({ page }) => {

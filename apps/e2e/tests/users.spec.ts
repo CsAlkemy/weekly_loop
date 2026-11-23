@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { resetData, signIn, signInWith } from "./helpers";
+import { resetData, SEED_PASSWORD, signIn, signInWith } from "./helpers";
 
 test.beforeEach(({ request }) => resetData(request));
 
@@ -68,4 +68,25 @@ test("people who are not Admins cannot manage users", async ({ page }) => {
   await page.goto("/admin/users");
   await expect(page).toHaveURL(/\/admin\/settings$/);
   await expect(page.getByRole("heading", { name: "Only Admins can open Settings" })).toBeVisible();
+});
+
+test("a role change reaches that person's open page without a reload", async ({
+  page,
+  request,
+}) => {
+  await signIn(page, "Indy Ito", "Operations");
+  await page
+    .getByRole("navigation", { name: "Primary" })
+    .getByRole("link", { name: "To-Dos", exact: true })
+    .click();
+  await expect(page.getByText("Live", { exact: true })).toBeVisible();
+  await expect(page.getByText("read-only")).toHaveCount(0);
+
+  await request.post("/api/auth/login", {
+    data: { email: "avery@acme.test", password: SEED_PASSWORD },
+  });
+  const changed = await request.patch("/api/users/u9", { data: { role: "observer" } });
+  expect(changed.status()).toBe(200);
+
+  await expect(page.getByText("read-only")).toBeVisible({ timeout: 3000 });
 });

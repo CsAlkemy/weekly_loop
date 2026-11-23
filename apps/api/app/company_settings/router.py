@@ -12,10 +12,9 @@ from app.db.models import Company, Team
 from app.db.session import SessionDep
 from app.realtime.hub import hub
 from app.seed import reset_to_seed
+from app.teams.service import company_team_ids
 
 router = APIRouter(prefix="/settings", tags=["settings"], responses=errors(401, 403, 409))
-
-TEAM_RESOURCES = ("scorecard", "issues", "todos", "rocks", "meeting")
 
 
 class SettingsOut(ApiModel):
@@ -57,6 +56,7 @@ async def update_settings(body: SettingsIn, admin: Admin, session: SessionDep):
     require_test_tools()
     await set_test_forms(session, admin.company_id, body.test_forms)
     await session.commit()
+    await hub.refresh(await company_team_ids(session, admin.company_id))
     return await settings_out(session, admin.company_id)
 
 
@@ -74,6 +74,4 @@ async def reset_data(admin: Admin, session: SessionDep):
     await session.commit()
     clock.restart()
     await share_clock(session)
-    for team_id in await session.scalars(select(Team.id)):
-        for resource in TEAM_RESOURCES:
-            await hub.invalidate(team_id, resource)
+    await hub.refresh(list(await session.scalars(select(Team.id))))

@@ -5,7 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { activityKey } from "@/hooks/use-activity";
 import { sessionKey } from "@/hooks/use-auth";
-import { teamKey } from "@/hooks/use-teams";
+import { settingsKey } from "@/hooks/use-settings";
+import { teamKey, teamsKey } from "@/hooks/use-teams";
 
 function socketBase(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
@@ -41,6 +42,10 @@ export function useTeamChannel(teamId: string | undefined): boolean {
             void queryClient.invalidateQueries({ queryKey: teamKey(teamId) });
           }
           everConnected = true;
+        } else if (event.type === "refresh") {
+          for (const queryKey of [teamKey(teamId), teamsKey, sessionKey, settingsKey]) {
+            void queryClient.invalidateQueries({ queryKey });
+          }
         } else if (event.type === "invalidate") {
           void queryClient.invalidateQueries({
             queryKey: [...teamKey(teamId), event.resource],

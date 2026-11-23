@@ -1,6 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { closeBrowsers, openPage, resetData, signedInBrowser, signIn } from "./helpers";
+import {
+  closeBrowsers,
+  openPage,
+  resetData,
+  SEED_PASSWORD,
+  signedInBrowser,
+  signIn,
+} from "./helpers";
 
 test.beforeEach(({ request }) => resetData(request));
 test.afterEach(closeBrowsers);
@@ -62,4 +69,30 @@ test("the Overview shows who changed what", async ({ browser }) => {
     "Blake Brooks marked Publish hiring ad done",
     { timeout: 2000 },
   );
+});
+
+test("solving an Issue made from a To-Do clears its label for teammates", async ({
+  browser,
+  request,
+}) => {
+  const casey = await signedInBrowser(browser, "Casey Cho", "To-Dos");
+  await expect(casey.getByText("Live", { exact: true })).toBeVisible();
+  const row = casey
+    .getByRole("list", { name: "Open To-Dos" })
+    .getByRole("listitem")
+    .filter({ hasText: "Publish hiring ad" });
+
+  await request.post("/api/auth/login", {
+    data: { email: "blake@acme.test", password: SEED_PASSWORD },
+  });
+  const issue = await (await request.post("/api/teams/team_lead/todos/t12/issue")).json();
+  await expect(row.getByText("On the Issues list")).toBeVisible({ timeout: 2000 });
+
+  await request.post(`/api/teams/team_lead/issues/${issue.id}/solve`, {
+    data: { note: "Posted it." },
+  });
+  await expect(row.getByText("On the Issues list")).toHaveCount(0, { timeout: 2000 });
+  await expect(
+    row.getByRole("button", { name: 'Make "Publish hiring ad" an Issue' }),
+  ).toBeVisible();
 });

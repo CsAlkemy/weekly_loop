@@ -68,7 +68,7 @@ Code layout: [docs/conventions.md](docs/conventions.md).
   Issue from an overdue To-Do or an off-track Rock (same no-duplicates rule), an activity log of
   who changed what (on the Overview), and the 1,000-companies note in the decision record.
 - **Added on request, beyond the brief:** an Admin Settings page (Users & roles, and the testing
-  tools), adding Measurables (they start this week, so earlier weeks are not missed), clearing a
+  tools), adding Measurables (a test form; they start this week, so earlier weeks are not missed), clearing a
   score, Issue details, a priority filter and sort, and a page per meeting summary. A user cannot
   become an Observer or leave a team while they own open items there.
 

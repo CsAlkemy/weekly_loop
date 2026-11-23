@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.activity import service as activity
 from app.activity.labels import number, week_label
@@ -10,6 +10,7 @@ from app.auth.deps import TeamAccess, Writer
 from app.common.enums import MeasurableStatus
 from app.common.errors import errors
 from app.common.weeks import CompanyTime, recent_weeks, week_start
+from app.company_settings.deps import require_test_forms
 from app.db.models import Measurable, User
 from app.db.session import SessionDep
 from app.issues.schemas import IssueOut, issue_out
@@ -67,7 +68,8 @@ async def get_scorecard(team: TeamAccess, time: TeamTime, session: SessionDep):
     "/measurables",
     response_model=MeasurableOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Add a Measurable to the team's Scorecard",
+    dependencies=[Depends(require_test_forms)],
+    summary="Add a Measurable to the team's Scorecard (only while the test forms are on)",
 )
 async def create_measurable(
     body: MeasurableCreateIn, team: TeamAccess, user: Writer, time: TeamTime, session: SessionDep

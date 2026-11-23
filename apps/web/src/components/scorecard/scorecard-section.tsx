@@ -10,6 +10,7 @@ import { NewMeasurableModal } from "@/components/scorecard/new-measurable-modal"
 import { ScorecardTable } from "@/components/scorecard/scorecard-table";
 import { TrendModal } from "@/components/scorecard/trend-modal";
 import { useSession } from "@/hooks/use-auth";
+import { useTestForms } from "@/hooks/use-settings";
 import {
   useMakeIssue,
   useScorecard,
@@ -66,6 +67,7 @@ export function ScorecardSection({
   const { data: scorecard, isLoading, error } = useScorecard(teamId);
   const setScore = useSetScore(teamId);
   const editable = Boolean(user && canWrite(user.role));
+  const testForms = useTestForms();
   const makeIssue = useMakeIssue(teamId);
   const [trend, setTrend] = useState<Measurable | null>(null);
   const [adding, setAdding] = useState(false);
@@ -95,7 +97,7 @@ export function ScorecardSection({
       title={title}
       description={description}
       action={
-        editable ? (
+        editable && testForms ? (
           <CommonButton type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
             <PlusIcon aria-hidden weight="bold" />
             New measurable

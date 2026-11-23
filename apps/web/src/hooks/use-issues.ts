@@ -9,6 +9,8 @@ import type {
 import { apiRequest, apiUrl } from "@repo/library/apis";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { rocksKey } from "@/hooks/use-rocks";
+import { scorecardKey } from "@/hooks/use-scorecard";
 import { teamKey } from "@/hooks/use-teams";
 import { todosKey } from "@/hooks/use-todos";
 
@@ -55,7 +57,12 @@ export function useSolveIssue(teamId: string) {
   return useMutation<Issue, ApiError, { issueId: string; note: string }>({
     mutationFn: ({ issueId, note }) =>
       apiRequest<Issue>("post", issueUrl(teamId, `/${issueId}/solve`), { note }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesKey(teamId) }),
+    onSuccess: () =>
+      Promise.all(
+        [issuesKey(teamId), scorecardKey(teamId), todosKey(teamId), rocksKey(teamId)].map(
+          (queryKey) => queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
   });
 }
 

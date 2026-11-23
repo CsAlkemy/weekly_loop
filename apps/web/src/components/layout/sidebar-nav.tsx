@@ -114,18 +114,19 @@ export function SidebarNav({ collapsed, onNavigate }: SidebarNavProps) {
   const { user } = useSession();
   const { data: teams } = useTeams();
   const routeTeamId = typeof router.query.teamId === "string" ? router.query.teamId : null;
-  const teamId = routeTeamId ?? teams?.[0]?.id ?? null;
+  const routeTeamAllowed = !routeTeamId || Boolean(teams?.some((team) => team.id === routeTeamId));
+  const teamId = routeTeamAllowed ? (routeTeamId ?? teams?.[0]?.id ?? null) : null;
 
   return (
     <div className={cn("grid", collapsed ? "gap-4" : "gap-7")}>
-      {teamId ? (
-        <TeamNav teamId={teamId} collapsed={collapsed} onNavigate={onNavigate} />
-      ) : (
+      {!teams ? (
         <div className="grid gap-2" role="status" aria-label="Loading">
           <Skeleton className="h-11 rounded-full" />
           <Skeleton className="h-11 rounded-full" />
         </div>
-      )}
+      ) : teamId ? (
+        <TeamNav teamId={teamId} collapsed={collapsed} onNavigate={onNavigate} />
+      ) : null}
 
       {user?.role === Role.ADMIN ? (
         <NavGroup label="Admin" collapsed={collapsed}>

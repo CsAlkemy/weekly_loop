@@ -11,6 +11,7 @@ const TEST_FORMS = [
   "Add To-Do on the To-Dos page",
   "Add Rock on the Rocks page",
   "Tick a Milestone done on the Rocks page",
+  "New measurable on the Scorecard",
 ];
 
 function TestFormsCard() {
@@ -21,7 +22,7 @@ function TestFormsCard() {
     <SectionCard
       icon={FlaskIcon}
       title="Test forms"
-      description="Extra forms for trying the app. Normally To-Dos come from Issues and Rocks are set each quarter."
+      description="Extra forms for trying the app. Normally To-Dos come from Issues, and Rocks and Measurables come from the seed data."
     >
       {isLoading ? <ListSkeleton rows={2} /> : null}
       {error ? <p className="text-destructive">{error.message}</p> : null}

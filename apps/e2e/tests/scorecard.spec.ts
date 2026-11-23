@@ -1,6 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { closeBrowsers, openPage, resetData, signedInBrowser, signIn } from "./helpers";
+import {
+  closeBrowsers,
+  openPage,
+  resetData,
+  signedInBrowser,
+  signIn,
+  turnOnTestForms,
+} from "./helpers";
 
 test.beforeEach(({ request }) => resetData(request));
 test.afterEach(closeBrowsers);
@@ -82,6 +89,14 @@ test("a save based on a score someone else has since changed is refused", async 
   await expect(blake.getByText("Someone else changed this score to 12")).toBeVisible();
   await expect(cell(blake, /New deals closed, week of Nov 2: 12, On track/)).toBeVisible();
   await expect(cell(dana, /New deals closed, week of Nov 2: 12, On track/)).toBeVisible();
+});
+
+test("New measurable only shows while the test forms are on", async ({ page }) => {
+  await signIn(page, "Casey Cho");
+  await openPage(page, "Scorecard");
+
+  await expect(scorecard(page).getByText("New deals closed", { exact: true })).toBeVisible();
+  await expect(scorecard(page).getByRole("button", { name: "New measurable" })).toHaveCount(0);
 });
 
 test("an Observer cannot edit scores", async ({ page }) => {
@@ -199,7 +214,8 @@ test("the owner's name shows on hover and a trend opens from the chart button", 
   await expect(trend.getByText("Last week", { exact: true })).toBeVisible();
 });
 
-test("a Team Member adds a measurable and everyone sees it", async ({ browser }) => {
+test("a Team Member adds a measurable and everyone sees it", async ({ browser, request }) => {
+  await turnOnTestForms(request);
   const casey = await signedInBrowser(browser, "Casey Cho", "Scorecard");
   const dana = await signedInBrowser(browser, "Dana Diaz", "Scorecard");
   await expect(dana.getByText("Live", { exact: true })).toBeVisible();

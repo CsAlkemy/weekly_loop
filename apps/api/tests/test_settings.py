@@ -1,5 +1,5 @@
 from tests.conftest import login
-from tests.test_journeys import listening, resources
+from tests.test_journeys import listening
 from tests.test_users import NEW_USER
 
 LEAD = "/api/teams/team_lead"
@@ -58,4 +58,20 @@ async def test_reset_restores_the_seed_but_keeps_the_switch(client):
     assert NEW_USER["email"] not in emails
     assert (await client.get("/api/settings")).json()["testForms"] is True
     for socket in sockets.values():
-        assert set(resources(socket)) == {"scorecard", "issues", "todos", "rocks", "meeting"}
+        assert socket.events == [{"type": "refresh"}]
+
+
+async def test_adding_a_measurable_needs_the_test_forms(client):
+    await login(client, "u2")
+    measurable = {
+        "name": "Qualified leads",
+        "ownerId": "u3",
+        "unit": "count",
+        "goal": {"type": "at_least", "value": 25},
+    }
+    assert (await client.post(f"{LEAD}/measurables", json=measurable)).status_code == 403
+
+    await login(client, "u1")
+    await client.patch("/api/settings", json={"testForms": True})
+    await login(client, "u2")
+    assert (await client.post(f"{LEAD}/measurables", json=measurable)).status_code == 201

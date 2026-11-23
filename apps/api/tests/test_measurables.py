@@ -1,5 +1,9 @@
+import pytest
+
 from app.realtime.hub import hub
 from tests.conftest import login
+
+pytestmark = pytest.mark.usefixtures("test_forms_on")
 
 URL = "/api/teams/team_lead/measurables"
 LEADS = {

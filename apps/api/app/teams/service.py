@@ -36,3 +36,7 @@ async def list_members(session: AsyncSession, team_id: str) -> Sequence[User]:
 async def team_timezone(session: AsyncSession, team: Team) -> str:
     company = await session.get_one(Company, team.company_id)
     return company.timezone
+
+
+async def company_team_ids(session: AsyncSession, company_id: str) -> list[str]:
+    return list(await session.scalars(select(Team.id).where(Team.company_id == company_id)))

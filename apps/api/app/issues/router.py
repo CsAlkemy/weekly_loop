@@ -19,6 +19,16 @@ from app.realtime.hub import hub
 from app.teams.deps import TeamTime
 from app.todos.schemas import TodoOut, todo_out
 
+
+def source_resources(issue) -> list[str]:
+    sources = {
+        "scorecard": issue.source_measurable_id,
+        "todos": issue.source_todo_id,
+        "rocks": issue.source_rock_id,
+    }
+    return [resource for resource, source in sources.items() if source is not None]
+
+
 router = APIRouter(
     prefix="/teams/{team_id}/issues", tags=["issues"], responses=errors(401, 403, 404, 409)
 )
@@ -101,6 +111,8 @@ async def solve_issue(
         session, team.id, user, "issue.solved", f"Solved {view.issue.title}", time.now
     )
     await hub.invalidate(team.id, "issues")
+    for resource in source_resources(view.issue):
+        await hub.invalidate(team.id, resource)
     return issue_out(view)
 
 
