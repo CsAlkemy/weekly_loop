@@ -11,7 +11,9 @@ from app.meetings.schemas import (
     ActiveMeetingOut,
     MeetingStateOut,
     MeetingSummaryOut,
+    PastMeetingOut,
     RatingIn,
+    past_meeting_out,
     state_out,
 )
 from app.realtime.hub import hub
@@ -106,6 +108,15 @@ async def end_meeting(team: TeamAccess, user: Writer, time: TeamTime, session: S
     await activity.record(session, team.id, user, "meeting.ended", "Ended the meeting", time.now)
     await hub.invalidate(team.id, "meeting")
     return summary
+
+
+@router.get(
+    "/meetings",
+    response_model=list[PastMeetingOut],
+    summary="The team's ended meetings, newest first",
+)
+async def list_past_meetings(team: TeamAccess, session: SessionDep):
+    return [past_meeting_out(past) for past in await service.past_meetings(session, team.id)]
 
 
 @router.get(

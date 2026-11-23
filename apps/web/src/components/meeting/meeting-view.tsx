@@ -11,6 +11,7 @@ import { PAGE_CLASS, PageHeader } from "@/components/layout/page-header";
 import { MeetingBar } from "@/components/meeting/meeting-bar";
 import { MeetingConclude } from "@/components/meeting/meeting-conclude";
 import { MeetingLobby } from "@/components/meeting/meeting-lobby";
+import { PastMeetings } from "@/components/meeting/past-meetings";
 import { ScorecardSection } from "@/components/scorecard/scorecard-section";
 import { useSession } from "@/hooks/use-auth";
 import { useJoinMeeting, useMeeting } from "@/hooks/use-meeting";
@@ -99,11 +100,14 @@ export function MeetingView({ teamId }: { teamId: string }) {
           ) : null}
         </>
       ) : (
-        <MeetingLobby
-          teamId={teamId}
-          user={user}
-          lastEndedMeetingId={active?.lastEndedMeetingId ?? null}
-        />
+        <>
+          <MeetingLobby
+            teamId={teamId}
+            user={user}
+            lastEndedMeetingId={active?.lastEndedMeetingId ?? null}
+          />
+          <PastMeetings teamId={teamId} timeZone={team.timezone} />
+        </>
       )}
     </main>
   );

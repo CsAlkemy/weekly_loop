@@ -340,3 +340,32 @@ async def test_a_past_summary_does_not_change_when_its_data_is_edited_later(clie
     after = (await client.get(f"{BASE}/meetings/mt2/summary")).json()
 
     assert after == before
+
+
+async def test_past_meetings_are_listed_newest_first_with_their_rating(client, set_now):
+    await login(client, "u5")
+    seeded = (await client.get(f"{BASE}/meetings")).json()
+    assert [meeting["id"] for meeting in seeded] == ["mt2", "mt1"]
+    assert {"facilitator", "attendeesCount", "rating", "ratingsCount"} <= seeded[0].keys()
+
+    await login(client, "u2")
+    set_now("2026-11-11T15:10:00Z")
+    meeting = (await client.post(MEETING)).json()
+    assert [m["id"] for m in (await client.get(f"{BASE}/meetings")).json()] == ["mt2", "mt1"]
+
+    set_now("2026-11-11T15:20:00Z")
+    await client.post(f"{MEETING}/advance")
+    await client.post(f"{MEETING}/advance")
+    await client.put(f"{MEETING}/rating", json={"rating": 7})
+    await client.post(f"{MEETING}/end")
+
+    latest = (await client.get(f"{BASE}/meetings")).json()[0]
+    assert latest["id"] == meeting["id"]
+    assert (latest["facilitator"]["id"], latest["attendeesCount"]) == ("u2", 1)
+    assert (latest["rating"], latest["ratingsCount"]) == (7, 1)
+
+
+async def test_past_meetings_follow_team_access(client):
+    await login(client, "u6")
+    assert (await client.get(f"{BASE}/meetings")).status_code == 403
+    assert (await client.get("/api/teams/team_sales/meetings")).json() == []

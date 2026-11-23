@@ -147,6 +147,20 @@ test("an Observer can join but not start, advance or rate", async ({ browser }) 
   await expect(ellis.getByRole("radio")).toHaveCount(0);
 });
 
+test("past meetings are listed newest first and open their summary", async ({ page }) => {
+  await signIn(page, "Ellis Evans");
+  await openMeetingPage(page);
+
+  const past = page.getByRole("list", { name: "Past meetings" }).getByRole("listitem");
+  await expect(past).toHaveCount(2);
+  await expect(past.first()).toContainText("Rated 8.3 (4)");
+  await past
+    .first()
+    .getByRole("link", { name: /Open the summary/ })
+    .click();
+  await expect(page.getByRole("region", { name: "Meeting summary" })).toContainText("8.3");
+});
+
 test("the last meeting's summary can be opened from the meeting page", async ({ page }) => {
   await signIn(page, "Casey Cho");
   await openMeetingPage(page);

@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 from datetime import date, datetime
 from decimal import Decimal
@@ -114,9 +115,12 @@ def build_rows(data: dict) -> list[tuple[type[models.Base], list[dict]]]:
     ]
 
 
+SEED_SALT = hashlib.sha256(b"weekly-loop seed users").digest()[:16]
+
+
 @cache
 def seed_password_hash() -> str:
-    return hash_password(settings.seed_password)
+    return hash_password(settings.seed_password, SEED_SALT)
 
 
 async def seed(session: AsyncSession, path: Path = settings.seed_path) -> None:

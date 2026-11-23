@@ -6,7 +6,7 @@ from app.auth.schemas import UserOut
 from app.common.enums import MeasurableStatus, MeetingSection
 from app.common.schemas import ApiModel
 from app.meetings.agenda import AGENDA
-from app.meetings.service import MeetingState, MeetingSummary
+from app.meetings.service import MeetingState, MeetingSummary, PastMeeting
 
 
 class AgendaItemOut(ApiModel):
@@ -130,4 +130,26 @@ def summary_out(summary: MeetingSummary) -> MeetingSummaryOut:
         attendees=summary.attendees,
         rating=summary.rating,
         ratings_count=len(summary.ratings),
+    )
+
+
+class PastMeetingOut(ApiModel):
+    id: str
+    started_at: datetime
+    ended_at: datetime
+    facilitator: UserOut
+    attendees_count: int
+    rating: float | None
+    ratings_count: int
+
+
+def past_meeting_out(past: PastMeeting) -> PastMeetingOut:
+    return PastMeetingOut(
+        id=past.meeting.id,
+        started_at=past.meeting.started_at,
+        ended_at=past.meeting.ended_at,
+        facilitator=past.facilitator,
+        attendees_count=past.attendees_count,
+        rating=past.rating,
+        ratings_count=len(past.ratings),
     )

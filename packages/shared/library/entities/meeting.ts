@@ -66,3 +66,13 @@ export interface MeetingSummary {
   rating: number | null;
   ratingsCount: number;
 }
+
+export interface PastMeeting {
+  id: string;
+  startedAt: string;
+  endedAt: string;
+  facilitator: User;
+  attendeesCount: number;
+  rating: number | null;
+  ratingsCount: number;
+}

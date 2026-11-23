@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { ActiveMeeting, ApiError, Meeting, MeetingSummary } from "@repo/library";
+import type { ActiveMeeting, ApiError, Meeting, MeetingSummary, PastMeeting } from "@repo/library";
 import { apiRequest, apiUrl } from "@repo/library/apis";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -14,6 +14,13 @@ export function useMeeting(teamId: string) {
   return useQuery<ActiveMeeting, ApiError>({
     queryKey: meetingKey(teamId),
     queryFn: () => apiRequest<ActiveMeeting>("get", meetingUrl(teamId)),
+  });
+}
+
+export function usePastMeetings(teamId: string) {
+  return useQuery<PastMeeting[], ApiError>({
+    queryKey: [...meetingKey(teamId), "past"],
+    queryFn: () => apiRequest<PastMeeting[]>("get", apiUrl("teams", `${teamId}/meetings`)),
   });
 }
 

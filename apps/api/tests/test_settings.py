@@ -81,3 +81,15 @@ async def test_adding_a_measurable_needs_the_test_forms(client):
 
     await client.patch("/api/settings", json={"testForms": True})
     assert (await client.post(f"{LEAD}/measurables", json=measurable)).status_code == 201
+
+
+async def test_reset_keeps_the_admin_signed_in_whichever_process_handles_it(client):
+    from app.auth.passwords import hash_password
+    from app.config.env import settings
+    from app.seed import SEED_SALT, seed_password_hash
+
+    assert seed_password_hash() == hash_password(settings.seed_password, SEED_SALT)
+
+    await login(client, "u1")
+    assert (await client.post("/api/settings/reset-to-seed")).status_code == 204
+    assert (await client.get("/api/auth/me")).status_code == 200

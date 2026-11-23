@@ -1,10 +1,11 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,6 +91,55 @@ async def last_ended_meeting_id(session: AsyncSession, team_id: str) -> str | No
         .order_by(Meeting.ended_at.desc())
         .limit(1)
     )
+
+
+@dataclass(frozen=True)
+class PastMeeting:
+    meeting: Meeting
+    facilitator: User
+    attendees_count: int
+    ratings: list[int]
+
+    @property
+    def rating(self) -> Decimal | None:
+        return average_rating(self.ratings)
+
+
+async def past_meetings(session: AsyncSession, team_id: str) -> list[PastMeeting]:
+    rows = (
+        await session.execute(
+            select(Meeting, User)
+            .join(User, User.id == Meeting.facilitator_id)
+            .where(Meeting.team_id == team_id, Meeting.ended_at.is_not(None))
+            .order_by(Meeting.started_at.desc(), Meeting.id)
+        )
+    ).all()
+    ids = [meeting.id for meeting, _ in rows]
+    ratings: dict[str, list[int]] = defaultdict(list)
+    for meeting_id, rating in await session.execute(
+        select(MeetingRating.meeting_id, MeetingRating.rating).where(
+            MeetingRating.meeting_id.in_(ids)
+        )
+    ):
+        ratings[meeting_id].append(rating)
+    attendees = dict(
+        (
+            await session.execute(
+                select(MeetingAttendee.meeting_id, func.count())
+                .where(MeetingAttendee.meeting_id.in_(ids))
+                .group_by(MeetingAttendee.meeting_id)
+            )
+        ).all()
+    )
+    return [
+        PastMeeting(
+            meeting=meeting,
+            facilitator=facilitator,
+            attendees_count=attendees.get(meeting.id, 0),
+            ratings=ratings[meeting.id],
+        )
+        for meeting, facilitator in rows
+    ]
 
 
 async def _locked_active(session: AsyncSession, team_id: str) -> Meeting:

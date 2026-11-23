@@ -10,8 +10,8 @@ def _digest(password: str, salt: bytes, n: int, r: int, p: int) -> bytes:
     return hashlib.scrypt(password.encode(), salt=salt, n=n, r=r, p=p)
 
 
-def hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
+def hash_password(password: str, salt: bytes | None = None) -> str:
+    salt = salt or secrets.token_bytes(16)
     encoded = (base64.b64encode(part).decode() for part in (salt, _digest(password, salt, N, R, P)))
     return f"scrypt${N}${R}${P}${'$'.join(encoded)}"
 
