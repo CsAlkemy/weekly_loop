@@ -6,7 +6,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.activity.router import router as activity_router
 from app.auth.router import router as auth_router
-from app.common.shared_clock import CLOCK_CHANGED, load_clock
+from app.common.shared_clock import CLOCK_CHANGED, load_clock, start_clock
 from app.company_settings.router import router as company_settings_router
 from app.config.env import settings
 from app.db.session import SessionLocal
@@ -30,6 +30,7 @@ async def reload_clock(event: dict) -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     async with SessionLocal() as session:
+        await start_clock(session)
         await load_clock(session)
     listener = asyncio.create_task(hub.listen(reload_clock))
     yield

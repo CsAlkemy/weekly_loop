@@ -7,7 +7,9 @@ Nothing reads the system clock directly. `APP_NOW` is where the app's clock star
 - **API tests and the rules report freeze it** at `APP_NOW` (`APP_CLOCK=frozen`), so every result
   is deterministic. Tests that need another moment override the clock dependency with the
   `set_now` fixture, for example to check that a Milestone due today is past due tomorrow.
-- **The running server ticks** forward from `APP_NOW`, so a meeting timer can run.
+- **The running server ticks** forward from `APP_NOW`, so a meeting timer can run. Each API start
+  begins at `APP_NOW` or the latest recorded activity, whichever is later, so a stopped stack never
+  drifts; the API workers share the clock through the database.
 - **Playwright** restores the seed and restarts the clock before each test through
   `POST /api/testing/reset`. `POST /api/testing/clock/advance` moves the clock, which is how the
   overrun test works. Both routes are only mounted when `ENABLE_TEST_ROUTES=true`; a test checks

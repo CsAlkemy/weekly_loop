@@ -14,7 +14,8 @@ docker compose up --build
   account". API docs (OpenAPI): http://localhost:8000/api/docs. Postgres: `localhost:5433`,
   `weekly`/`weekly`, database `weekly_loop`.
 - The API migrates and loads `apps/api/seed/seed.json` on start (missing rows only). The clock
-  starts at `APP_NOW` (default `2026-11-11T15:00:00Z`) and ticks. Busy port: `WEB_PORT=3100`.
+  starts at `APP_NOW` (default `2026-11-11T15:00:00Z`) and ticks; after a restart it picks up from
+  the latest recorded activity, so time spent stopped never counts. Busy port: `WEB_PORT=3100`.
 - Testing tools (test forms to add To-Dos and Rocks, and Reset to seed data, under Settings) are off
   by default. Turn them on with `ENABLE_TEST_TOOLS=true docker compose up --build`.
 - Without Docker: bun and uv, copy both `.env.example` files to `.env`, then `bun install`,

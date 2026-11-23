@@ -6,6 +6,7 @@ from app.config.env import settings
 
 class Clock:
     def __init__(self, start: datetime, ticking: bool) -> None:
+        self.initial = start
         self._start = start
         self._ticking = ticking
         self._anchor = time.time()
@@ -27,6 +28,7 @@ class Clock:
         self._anchor = anchor.timestamp()
 
     def restart(self) -> None:
+        self._start = self.initial
         self._anchor = time.time()
 
     def advance(self, seconds: float) -> None:
