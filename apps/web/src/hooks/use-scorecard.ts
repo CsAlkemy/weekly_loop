@@ -35,17 +35,22 @@ export interface SetScoreInput {
   measurableId: string;
   weekStart: string;
   value: number | null;
+  expected: number | null;
 }
 
 export function useSetScore(teamId: string) {
   const queryClient = useQueryClient();
 
   return useMutation<ScoreCell, ApiError, SetScoreInput>({
-    mutationFn: ({ measurableId, weekStart, value }) => {
+    mutationFn: ({ measurableId, weekStart, value, expected }) => {
       const url = apiUrl("teams", `${teamId}/measurables/${measurableId}/scores/${weekStart}`);
-      return value === null
-        ? apiRequest<ScoreCell>("delete", url)
-        : apiRequest<ScoreCell>("put", url, { value });
+      if (value !== null) return apiRequest<ScoreCell>("put", url, { value, expected });
+      const seen = expected === null ? "" : `?expected=${expected}`;
+      return apiRequest<ScoreCell>("delete", `${url}${seen}`);
+    },
+    onError: (error) => {
+      if (error.status === 409)
+        void queryClient.invalidateQueries({ queryKey: scorecardKey(teamId) });
     },
     onSuccess: (cell, { measurableId }) => {
       queryClient.setQueryData<Scorecard>(scorecardKey(teamId), (current) =>

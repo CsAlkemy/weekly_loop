@@ -3,10 +3,12 @@ from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Identity,
     Index,
     MetaData,
     Numeric,
@@ -15,6 +17,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.common.enums import GoalType, MeetingSection, RockStatus, Role
@@ -120,6 +123,7 @@ class Score(Base):
 class Rock(Base):
     __tablename__ = "rocks"
     __table_args__ = (
+        UniqueConstraint("id", "team_id"),
         CheckConstraint(one_of("status", RockStatus), name="status"),
         CheckConstraint("quarter ~ '^[0-9]{4}-Q[1-4]$'", name="quarter_format"),
     )
@@ -161,10 +165,30 @@ class Issue(Base):
             "(source_measurable_id IS NULL) = (source_week_start IS NULL)", name="source_pair"
         ),
         CheckConstraint(is_monday("source_week_start"), name="source_week_start_monday"),
+        ForeignKeyConstraint(
+            ["source_todo_id", "team_id"], ["todos.id", "todos.team_id"], use_alter=True
+        ),
+        ForeignKeyConstraint(["source_rock_id", "team_id"], ["rocks.id", "rocks.team_id"]),
+        CheckConstraint(
+            "num_nonnulls(source_measurable_id, source_todo_id, source_rock_id) <= 1",
+            name="one_source",
+        ),
         Index(
             "uq_issues_open_source",
             "source_measurable_id",
             "source_week_start",
+            unique=True,
+            postgresql_where=text("solved_at IS NULL"),
+        ),
+        Index(
+            "uq_issues_open_todo",
+            "source_todo_id",
+            unique=True,
+            postgresql_where=text("solved_at IS NULL"),
+        ),
+        Index(
+            "uq_issues_open_rock",
+            "source_rock_id",
             unique=True,
             postgresql_where=text("solved_at IS NULL"),
         ),
@@ -182,11 +206,14 @@ class Issue(Base):
     resolution_note: Mapped[str | None]
     source_measurable_id: Mapped[str | None]
     source_week_start: Mapped[date | None]
+    source_todo_id: Mapped[str | None]
+    source_rock_id: Mapped[str | None]
 
 
 class Todo(Base):
     __tablename__ = "todos"
     __table_args__ = (
+        UniqueConstraint("id", "team_id"),
         ForeignKeyConstraint(["source_issue_id", "team_id"], ["issues.id", "issues.team_id"]),
         CheckConstraint(not_blank("title"), name="title_not_blank"),
         CheckConstraint("done_by_id IS NULL OR done_at IS NOT NULL", name="done_by_needs_done_at"),
@@ -251,3 +278,41 @@ class MeetingRating(Base):
     meeting_id: Mapped[str] = mapped_column(primary_key=True)
     user_id: Mapped[str] = mapped_column(primary_key=True)
     rating: Mapped[int] = mapped_column(SmallInteger)
+
+
+class LoginFailure(Base):
+    __tablename__ = "login_failures"
+    __table_args__ = (Index("ix_login_failures_email", "email", "failed_at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    email: Mapped[str]
+    failed_at: Mapped[datetime]
+
+
+class AppClock(Base):
+    __tablename__ = "app_clock"
+    __table_args__ = (CheckConstraint("id = 1", name="single_row"),)
+
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    app_now: Mapped[datetime]
+    anchor: Mapped[datetime]
+
+
+class MeetingSummaryRecord(Base):
+    __tablename__ = "meeting_summaries"
+
+    meeting_id: Mapped[str] = mapped_column(ForeignKey("meetings.id"), primary_key=True)
+    data: Mapped[dict] = mapped_column(JSONB)
+    frozen_at: Mapped[datetime]
+
+
+class Activity(Base):
+    __tablename__ = "activity"
+    __table_args__ = (Index("ix_activity_team_id", "team_id", "at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    team_id: Mapped[str] = mapped_column(ForeignKey("teams.id"))
+    actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    action: Mapped[str]
+    summary: Mapped[str]
+    at: Mapped[datetime]

@@ -17,11 +17,18 @@ interface IssueRowProps {
 }
 
 export function IssueSourceChip({ issue }: { issue: Issue }) {
-  if (!issue.source) return null;
+  const label = issue.source
+    ? `From scorecard: ${issue.source.measurableName}, week of ${formatDate(issue.source.weekStart)}`
+    : issue.sourceTodo
+      ? `From To-Do: ${issue.sourceTodo.title}`
+      : issue.sourceRock
+        ? `From Rock: ${issue.sourceRock.title}`
+        : null;
+  if (!label) return null;
 
   return (
     <Pill tone="primary" className="whitespace-normal leading-snug">
-      From scorecard: {issue.source.measurableName}, week of {formatDate(issue.source.weekStart)}
+      {label}
     </Pill>
   );
 }

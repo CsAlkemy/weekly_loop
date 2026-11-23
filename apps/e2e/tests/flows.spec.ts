@@ -64,7 +64,7 @@ test("a Rock's progress and status move for everyone as Milestones are ticked", 
   await drawer.getByRole("button", { name: "Add Rock" }).click();
   await expect(drawer).toBeHidden();
 
-  const rockFor = (page: Page) => page.getByRole("button", { name: /Open the Austin office/ });
+  const rockFor = (page: Page) => page.getByRole("button", { name: /^Open the Austin office/ });
   await expect(rockFor(ellis)).toContainText("Off track", { timeout: 2000 });
   await expect(rockFor(ellis)).toContainText("0%");
   await expect(rockFor(ellis)).toContainText("Dana Diaz");

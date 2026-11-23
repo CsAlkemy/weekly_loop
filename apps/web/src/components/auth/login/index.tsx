@@ -16,7 +16,7 @@ export function LoginView() {
       onSuccess: () => void router.push("/teams"),
       onError: (error) => {
         const message = error.message || "Unable to sign in right now";
-        if (error.status === 401) form.setError("password", { message });
+        if (error.status === 401 || error.status === 429) form.setError("password", { message });
         else toast.error(message);
       },
     });

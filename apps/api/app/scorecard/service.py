@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.enums import GoalType, MeasurableStatus
+from app.common.errors import changed_by_someone_else
 from app.common.ids import new_id
 from app.db.models import Issue, Measurable, Score, User
 from app.issues.service import require_eligible_owner
@@ -101,13 +102,24 @@ async def set_score(
     measurable_id: str,
     week_start: date,
     value: Decimal | None,
+    expected: Decimal | None,
     current_week: date,
 ) -> ScoreCell | None:
     measurable = await session.scalar(
-        select(Measurable).where(Measurable.id == measurable_id, Measurable.team_id == team_id)
+        select(Measurable)
+        .where(Measurable.id == measurable_id, Measurable.team_id == team_id)
+        .with_for_update()
     )
     if measurable is None:
         return None
+    current = await session.scalar(
+        select(Score.value).where(
+            Score.measurable_id == measurable_id, Score.week_start == week_start
+        )
+    )
+    if current != expected:
+        await session.rollback()
+        raise changed_by_someone_else("this score", current)
 
     if value is None:
         await session.execute(

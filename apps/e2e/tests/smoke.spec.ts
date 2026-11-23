@@ -69,7 +69,7 @@ test("a Rock expands to show its Milestones", async ({ page }) => {
   await signIn(page, "Casey Cho");
   await openPage(page, "Rocks");
 
-  const rock = page.getByRole("button", { name: /Hire VP of Sales/ });
+  const rock = page.getByRole("button", { name: /^Hire VP of Sales/ });
   await expect(rock).toContainText("Off track");
   await expect(rock).toContainText("13%");
 

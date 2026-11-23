@@ -9,7 +9,7 @@ import { TodoCreateDrawer } from "@/components/test-forms/todo-create-drawer";
 import { TodoRow } from "@/components/todos/todo-row";
 import { useSession } from "@/hooks/use-auth";
 import { useTestForms } from "@/hooks/use-settings";
-import { useSetTodoDone, useTodos } from "@/hooks/use-todos";
+import { useMakeIssueFromTodo, useSetTodoDone, useTodos } from "@/hooks/use-todos";
 
 interface TodosSectionProps {
   teamId: string;
@@ -20,6 +20,7 @@ export function TodosSection({ teamId, timeZone }: TodosSectionProps) {
   const { user } = useSession();
   const { data, isLoading, error } = useTodos(teamId);
   const setDone = useSetTodoDone(teamId);
+  const makeIssue = useMakeIssueFromTodo(teamId);
   const [showDone, setShowDone] = useState(false);
   const [adding, setAdding] = useState(false);
   const testForms = useTestForms();
@@ -45,6 +46,20 @@ export function TodosSection({ teamId, timeZone }: TodosSectionProps) {
         readOnly={readOnly}
         pending={setDone.isPending && setDone.variables?.todoId === todo.id}
         onToggle={(isDone) => toggle(todo, isDone)}
+        makingIssue={makeIssue.isPending && makeIssue.variables?.todoId === todo.id}
+        onMakeIssue={
+          readOnly
+            ? undefined
+            : () =>
+                makeIssue.mutate(
+                  { todoId: todo.id },
+                  {
+                    onSuccess: (issue) => toast.success(`Added to Issues: ${issue.title}`),
+                    onError: (issueError) =>
+                      toast.error(issueError.message || "Could not make it an Issue"),
+                  },
+                )
+        }
       />
     ));
 

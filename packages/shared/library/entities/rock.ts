@@ -17,4 +17,5 @@ export interface Rock {
   status: RockStatus;
   progressPercent: number;
   milestones: Milestone[];
+  openIssueId: string | null;
 }

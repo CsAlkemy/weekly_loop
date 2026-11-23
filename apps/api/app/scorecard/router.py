@@ -1,12 +1,16 @@
 from datetime import date
 from decimal import Decimal
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
+from app.activity import service as activity
+from app.activity.labels import number, week_label
 from app.auth.deps import TeamAccess, Writer
 from app.common.enums import MeasurableStatus
 from app.common.errors import errors
 from app.common.weeks import CompanyTime, recent_weeks, week_start
+from app.db.models import Measurable, User
 from app.db.session import SessionDep
 from app.issues.schemas import IssueOut, issue_out
 from app.issues.service import make_issue_from_score
@@ -66,10 +70,13 @@ async def get_scorecard(team: TeamAccess, time: TeamTime, session: SessionDep):
     summary="Add a Measurable to the team's Scorecard",
 )
 async def create_measurable(
-    body: MeasurableCreateIn, team: TeamAccess, _: Writer, time: TeamTime, session: SessionDep
+    body: MeasurableCreateIn, team: TeamAccess, user: Writer, time: TeamTime, session: SessionDep
 ):
     row = await service.create_measurable(
         session, team.id, body, recent_weeks(time.now, time.tz), time.current_week
+    )
+    await activity.record(
+        session, team.id, user, "measurable.added", f"Added the Measurable {body.name}", time.now
     )
     await hub.invalidate(team.id, "scorecard")
     return measurable_out(row)
@@ -89,13 +96,26 @@ async def save_score(
     measurable_id: str,
     week: date,
     value: Decimal | None,
+    expected: Decimal | None,
     time: CompanyTime,
+    user: User,
 ) -> service.ScoreCell:
     cell = await service.set_score(
-        session, team_id, measurable_id, editable_week(week, time), value, time.current_week
+        session,
+        team_id,
+        measurable_id,
+        editable_week(week, time),
+        value,
+        expected,
+        time.current_week,
     )
     if cell is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Measurable not found")
+    measurable = await session.get(Measurable, measurable_id)
+    where = f"{measurable.name}, {week_label(week)}"
+    summary = f"Cleared {where}" if value is None else f"Set {where} to {number(value)}"
+    action = "score.cleared" if value is None else "score.set"
+    await activity.record(session, team_id, user, action, summary, time.now)
     await hub.invalidate(team_id, "scorecard")
     return cell
 
@@ -103,34 +123,39 @@ async def save_score(
 @router.put(
     "/measurables/{measurable_id}/scores/{week}",
     response_model=ScoreCellOut,
-    summary="Set a week's score (last save wins)",
+    summary="Set a week's score, refused with 409 if it changed since you loaded it",
 )
 async def set_score(
     measurable_id: str,
     week: date,
     body: ScoreIn,
     team: TeamAccess,
-    _: Writer,
+    user: Writer,
     time: TeamTime,
     session: SessionDep,
 ):
-    return await save_score(session, team.id, measurable_id, week, body.value, time)
+    return await save_score(
+        session, team.id, measurable_id, week, body.value, body.expected, time, user
+    )
 
 
 @router.delete(
     "/measurables/{measurable_id}/scores/{week}",
     response_model=ScoreCellOut,
-    summary="Clear a week's score",
+    summary="Clear a week's score, refused with 409 if it changed since you loaded it",
 )
 async def clear_score(
     measurable_id: str,
     week: date,
     team: TeamAccess,
-    _: Writer,
+    user: Writer,
     time: TeamTime,
     session: SessionDep,
+    expected: Annotated[
+        Decimal | None, Query(description="The score you last saw; leave out if it was empty")
+    ] = None,
 ):
-    return await save_score(session, team.id, measurable_id, week, None, time)
+    return await save_score(session, team.id, measurable_id, week, None, expected, time, user)
 
 
 @router.post(
@@ -162,6 +187,9 @@ async def make_it_an_issue(
         session, team.id, measurable, week, user.id, time.now
     )
     if created:
+        await activity.record(
+            session, team.id, user, "issue.made", f"Made an Issue: {view.issue.title}", time.now
+        )
         await hub.invalidate(team.id, "issues")
         await hub.invalidate(team.id, "scorecard")
     else:

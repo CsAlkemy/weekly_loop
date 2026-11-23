@@ -27,6 +27,13 @@ cases. A second dependency refuses Observer writes. State changes that are not p
 verbs (`/solve`, `/done`, `/meeting/advance`). JSON is camelCase; OpenAPI docs are generated at
 `/api/docs`. Tradeoff: nested paths are longer, and a client must know the team to reach an item.
 
+**Lost updates (bonus).** Saving a score or an Issue's priority sends the value the person last saw
+as `expected`. The server locks the Measurable or Issue row, compares, and answers 409 with the new
+value in the message when they differ; the page then shows the new value. I compared values rather
+than adding a version column because a cleared score has no row to carry a version, and for a
+single number "is it still what I saw" is exactly the question. Tradeoff: a change and a change back
+(8 → 12 → 8) between load and save is not noticed, which loses nothing the person did not see.
+
 ## 3. Real-time transport and meeting state
 
 - **Transport: one WebSocket per team, used only to say "this changed".** All writes go through
@@ -34,8 +41,9 @@ verbs (`/solve`, `/done`, `/meeting/advance`). JSON is camelCase; OpenAPI docs a
   reached through the web app's own `/api` path, so the session cookie authorises it and the
   server checks team access and the `Origin` header. I chose this over pushing full state because
   there is one code path for reading data, and a missed message cannot leave a client wrong for
-  long. Tradeoff: one extra request per change, and an in-process hub needs a single API worker
-  (Postgres `LISTEN/NOTIFY` is the next step).
+  long. Each API process delivers to its own sockets and forwards the event through Postgres
+  `LISTEN/NOTIFY`, so several workers stay in sync (Docker runs two). Tradeoff: one extra request
+  per change, and an event sent while a listener reconnects is missed until that browser refetches.
 - **Ownership: the meeting is a Postgres row.** It holds the current section and
   `section_started_at`. One active meeting per team is a partial unique index, and advancing locks
   the row.
@@ -47,7 +55,8 @@ verbs (`/solve`, `/done`, `/meeting/advance`). JSON is camelCase; OpenAPI docs a
 ## 4. No duplicate Issues under concurrency
 
 A partial unique index on `(source_measurable_id, source_week_start) WHERE solved_at IS NULL`
-makes a second unsolved Issue impossible. Make it an Issue runs `INSERT … ON CONFLICT DO NOTHING`
+makes a second unsolved Issue impossible; overdue To-Dos and off-track Rocks use the same pattern
+with their own partial unique index and typed source column. Make it an Issue runs `INSERT … ON CONFLICT DO NOTHING`
 and, when nothing was inserted, selects the existing row. Two simultaneous requests both return the
 same Issue (one 201, one 200). I preferred this to an application lock or `SELECT … FOR UPDATE`
 because the database settles the race even with several API workers. Tested with 12 concurrent
@@ -55,12 +64,11 @@ requests and with two browsers clicking at once.
 
 ## 5. Keeping past meeting summaries unchanged
 
-Today a summary is computed on read from the meeting's time window, which is what lets the two
-seeded meetings have summaries. A later score edit would therefore change an old summary. To
-freeze them I would write the computed summary as JSON to a `meeting_summaries` row inside the
-transaction that ends the meeting, and serve that row when it exists. Seeded meetings would be
-snapshotted once at seed time. Tradeoff: the snapshot duplicates data and needs a version field if
-its shape changes, but history stops depending on mutable rows.
+Built: ending a meeting writes its computed summary as JSON to a `meeting_summaries` row in the
+same transaction, and the summary page serves that row. Seeded meetings are snapshotted at seed
+time, and a meeting ended before this existed is snapshotted on first read. Tradeoff: the snapshot
+duplicates data and needs a version field if its shape changes, but history no longer depends on
+mutable rows (tested: editing a score afterwards leaves the summary unchanged).
 
 ## 6. Supporting 1,000 companies (bonus note)
 
@@ -74,9 +82,9 @@ row carries `team_id`, so one database can hold many companies.
   and To-Dos a year: small for one Postgres. Reads are per team and use the `team_id` indexes;
   I would add `(team_id, due_date)` on To-Dos and `(team_id, solved_at)` on Issues, and page the
   lists, which today are not paginated.
-- **Live updates.** The in-process hub needs one API worker. With several workers (or instances)
-  each publishes `invalidate` through Postgres `LISTEN/NOTIFY` (Redis pub/sub if it gets busy) and
-  fans it out to its own sockets. Messages carry no data, so a lost one costs a refresh at worst.
+- **Live updates.** Already fanned out through Postgres `LISTEN/NOTIFY` across workers and
+  instances; Redis pub/sub is the step up if it gets busy. Messages carry no data, so a lost one
+  costs a refresh at worst.
 - **Time.** Each company keeps its own time zone, which every rule already takes. The demo clock
   (`APP_NOW`) becomes the real clock.
 - **Computed values.** Rates and statuses are computed on read per team, which stays cheap at this

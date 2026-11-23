@@ -142,8 +142,8 @@ export function ScorecardTable({
                           makingIssue?.measurableId === measurable.id &&
                           makingIssue.weekStart === week
                         }
-                        onSave={(value) =>
-                          onSave({ measurableId: measurable.id, weekStart: week, value })
+                        onSave={(value, expected) =>
+                          onSave({ measurableId: measurable.id, weekStart: week, value, expected })
                         }
                         onMakeIssue={() =>
                           onMakeIssue(

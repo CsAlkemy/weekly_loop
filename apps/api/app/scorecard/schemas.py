@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -39,8 +39,20 @@ class ScorecardOut(ApiModel):
     measurables: list[MeasurableOut]
 
 
+Expected = Annotated[
+    Decimal | None,
+    Field(
+        max_digits=12,
+        decimal_places=4,
+        description="The score you last saw, or null if the week was empty. "
+        "A save is refused with 409 when it has changed since.",
+    ),
+]
+
+
 class ScoreIn(ApiModel):
     value: Decimal = Field(max_digits=12, decimal_places=4)
+    expected: Expected
 
 
 Amount = Decimal | None

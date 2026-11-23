@@ -3,6 +3,7 @@ from pydantic import Field
 
 from app.common.clock import clock
 from app.common.schemas import ApiModel
+from app.common.shared_clock import share_clock
 from app.db.session import SessionDep
 from app.seed import reset_to_seed
 
@@ -18,6 +19,7 @@ async def reset(session: SessionDep) -> None:
     await reset_to_seed(session)
     await session.commit()
     clock.restart()
+    await share_clock(session)
 
 
 class ClockAdvanceIn(ApiModel):
@@ -29,5 +31,6 @@ class ClockAdvanceIn(ApiModel):
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Move the app clock forward (needs ENABLE_TEST_ROUTES)",
 )
-async def advance_clock(body: ClockAdvanceIn) -> None:
+async def advance_clock(body: ClockAdvanceIn, session: SessionDep) -> None:
     clock.advance(body.seconds)
+    await share_clock(session)

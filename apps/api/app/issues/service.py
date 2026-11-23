@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.common.enums import Role
+from app.common.errors import changed_by_someone_else
 from app.common.ids import new_id
-from app.db.models import Issue, Measurable, Membership, Todo, User
+from app.db.models import Issue, Measurable, Membership, Rock, Todo, User
 from app.rules.rules import issue_order
 from app.todos.service import TodoView, get_todo
 
@@ -23,20 +24,31 @@ class IssueView:
     owner: User
     source_measurable: Measurable | None
     solved_by: User | None
+    source_todo: Todo | None
+    source_rock: Rock | None
 
 
 async def _views(session: AsyncSession, team_id: str, *conditions) -> list[IssueView]:
     solved_by = aliased(User)
     rows = await session.execute(
-        select(Issue, User, Measurable, solved_by)
+        select(Issue, User, Measurable, solved_by, Todo, Rock)
         .join(User, User.id == Issue.owner_id)
         .outerjoin(Measurable, Measurable.id == Issue.source_measurable_id)
         .outerjoin(solved_by, solved_by.id == Issue.solved_by_id)
+        .outerjoin(Todo, Todo.id == Issue.source_todo_id)
+        .outerjoin(Rock, Rock.id == Issue.source_rock_id)
         .where(Issue.team_id == team_id, *conditions)
     )
     return [
-        IssueView(issue=issue, owner=owner, source_measurable=m, solved_by=by)
-        for issue, owner, m, by in rows
+        IssueView(
+            issue=issue,
+            owner=owner,
+            source_measurable=m,
+            solved_by=by,
+            source_todo=todo,
+            source_rock=rock,
+        )
+        for issue, owner, m, by, todo, rock in rows
     ]
 
 
@@ -95,10 +107,14 @@ async def create_issue(
 
 
 async def set_priority(
-    session: AsyncSession, team_id: str, issue_id: str, priority: int | None
+    session: AsyncSession, team_id: str, issue_id: str, priority: int | None, expected: int | None
 ) -> IssueView:
     issue = await _locked(session, team_id, issue_id)
     _require_unsolved(issue)
+    if issue.priority != expected:
+        current = issue.priority
+        await session.rollback()
+        raise changed_by_someone_else("this Issue's priority", current)
     issue.priority = priority
     await session.commit()
     return await get_issue(session, team_id, issue_id)
@@ -154,20 +170,20 @@ async def add_todo(
     return await get_todo(session, team_id, todo.id)
 
 
-async def make_issue_from_score(
+async def _make_issue(
     session: AsyncSession,
     team_id: str,
-    measurable: Measurable,
-    week_start: date,
+    title: str,
     owner_id: str,
     now: datetime,
+    source: dict,
 ) -> tuple[IssueView, bool]:
-    title = f"{measurable.name}, week of {week_start:%b} {week_start.day}"
-    is_open_for_source = (
-        Issue.source_measurable_id == measurable.id,
-        Issue.source_week_start == week_start,
+    columns = [getattr(Issue, name) for name in source]
+    is_open_for_source = [
+        *(column == value for column, value in zip(columns, source.values(), strict=True)),
+        Issue.team_id == team_id,
         Issue.solved_at.is_(None),
-    )
+    ]
 
     for _ in range(MAKE_ISSUE_ATTEMPTS):
         created_id = await session.scalar(
@@ -178,13 +194,9 @@ async def make_issue_from_score(
                 title=title,
                 owner_id=owner_id,
                 created_at=now,
-                source_measurable_id=measurable.id,
-                source_week_start=week_start,
+                **source,
             )
-            .on_conflict_do_nothing(
-                index_elements=[Issue.source_measurable_id, Issue.source_week_start],
-                index_where=Issue.solved_at.is_(None),
-            )
+            .on_conflict_do_nothing(index_elements=columns, index_where=Issue.solved_at.is_(None))
             .returning(Issue.id)
         )
         await session.commit()
@@ -196,3 +208,30 @@ async def make_issue_from_score(
             return await get_issue(session, team_id, existing_id), False
 
     raise HTTPException(status.HTTP_409_CONFLICT, "The Issue changed while saving; try again")
+
+
+async def make_issue_from_score(
+    session: AsyncSession,
+    team_id: str,
+    measurable: Measurable,
+    week_start: date,
+    owner_id: str,
+    now: datetime,
+) -> tuple[IssueView, bool]:
+    title = f"{measurable.name}, week of {week_start:%b} {week_start.day}"
+    source = {"source_measurable_id": measurable.id, "source_week_start": week_start}
+    return await _make_issue(session, team_id, title, owner_id, now, source)
+
+
+async def make_issue_from_todo(
+    session: AsyncSession, team_id: str, todo: Todo, owner_id: str, now: datetime
+) -> tuple[IssueView, bool]:
+    title = f"Overdue To-Do: {todo.title}"
+    return await _make_issue(session, team_id, title, owner_id, now, {"source_todo_id": todo.id})
+
+
+async def make_issue_from_rock(
+    session: AsyncSession, team_id: str, rock: Rock, owner_id: str, now: datetime
+) -> tuple[IssueView, bool]:
+    title = f"Off-track Rock: {rock.title}"
+    return await _make_issue(session, team_id, title, owner_id, now, {"source_rock_id": rock.id})

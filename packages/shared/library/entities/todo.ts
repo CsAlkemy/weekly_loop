@@ -15,6 +15,7 @@ export interface Todo {
   createdAt: string;
   overdue: boolean;
   sourceIssue: SourceIssue | null;
+  openIssueId: string | null;
 }
 
 export interface TodoCompletion {

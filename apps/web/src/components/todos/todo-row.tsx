@@ -1,15 +1,27 @@
 import { formatDate, formatInstant, type Todo } from "@repo/library";
 import { Checkbox, cn, Pill } from "@repo/ui";
 
+import { MakeIssueButton } from "@/components/issues/make-issue-button";
+
 interface TodoRowProps {
   todo: Todo;
   timeZone: string;
   readOnly: boolean;
   pending: boolean;
   onToggle: (done: boolean) => void;
+  makingIssue?: boolean;
+  onMakeIssue?: () => void;
 }
 
-export function TodoRow({ todo, timeZone, readOnly, pending, onToggle }: TodoRowProps) {
+export function TodoRow({
+  todo,
+  timeZone,
+  readOnly,
+  pending,
+  onToggle,
+  makingIssue = false,
+  onMakeIssue,
+}: TodoRowProps) {
   const done = todo.doneAt !== null;
 
   return (
@@ -29,6 +41,16 @@ export function TodoRow({ todo, timeZone, readOnly, pending, onToggle }: TodoRow
           {todo.owner.name}
           {todo.sourceIssue ? ` · from Issue: ${todo.sourceIssue.title}` : ""}
         </p>
+        {todo.openIssueId || (todo.overdue && onMakeIssue) ? (
+          <div className="mt-2">
+            <MakeIssueButton
+              subject={todo.title}
+              onIssues={todo.openIssueId !== null}
+              pending={makingIssue}
+              onClick={() => onMakeIssue?.()}
+            />
+          </div>
+        ) : null}
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1.5 text-sm text-muted-foreground">
         <span className="flex flex-wrap items-center justify-end gap-2">

@@ -323,3 +323,20 @@ async def test_meeting_changes_are_published_to_the_team(client):
         hub.leave("team_lead", socket)
 
     assert socket.events == [{"type": "invalidate", "resource": "meeting"}] * 6
+
+
+async def test_a_past_summary_does_not_change_when_its_data_is_edited_later(client):
+    await login(client, "u2")
+    before = (await client.get(f"{BASE}/meetings/mt2/summary")).json()
+    week = before["scorecardWeek"]
+    off_track = next(m for m in before["measurables"] if m["status"] == "off_track")
+
+    edited = await client.put(
+        f"{BASE}/measurables/{off_track['id']}/scores/{week}",
+        json={"value": 1000000, "expected": off_track["value"]},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["status"] != off_track["status"]
+    after = (await client.get(f"{BASE}/meetings/mt2/summary")).json()
+
+    assert after == before

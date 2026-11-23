@@ -13,6 +13,7 @@ from app.auth.passwords import hash_password
 from app.config.env import settings
 from app.db import models
 from app.db.session import SessionLocal, engine
+from app.meetings.summaries import freeze_ended_meetings
 
 
 def instant(value: str | None) -> datetime | None:
@@ -128,6 +129,7 @@ async def seed(session: AsyncSession, path: Path = settings.seed_path) -> None:
         .where(models.User.password_hash.is_(None))
         .values(password_hash=seed_password_hash())
     )
+    await freeze_ended_meetings(session)
 
 
 async def reset_to_seed(session: AsyncSession) -> None:

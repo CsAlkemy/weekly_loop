@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { TeamEvent } from "@repo/library";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { activityKey } from "@/hooks/use-activity";
 import { sessionKey } from "@/hooks/use-auth";
 import { teamKey } from "@/hooks/use-teams";
 
@@ -44,6 +45,7 @@ export function useTeamChannel(teamId: string | undefined): boolean {
           void queryClient.invalidateQueries({
             queryKey: [...teamKey(teamId), event.resource],
           });
+          void queryClient.invalidateQueries({ queryKey: activityKey(teamId) });
         }
       };
 

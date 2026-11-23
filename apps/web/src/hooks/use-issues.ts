@@ -35,10 +35,17 @@ export function useCreateIssue(teamId: string) {
 export function useSetIssuePriority(teamId: string) {
   const queryClient = useQueryClient();
 
-  return useMutation<Issue, ApiError, { issueId: string; priority: number | null }>({
-    mutationFn: ({ issueId, priority }) =>
-      apiRequest<Issue>("patch", issueUrl(teamId, `/${issueId}`), { priority }),
+  return useMutation<
+    Issue,
+    ApiError,
+    { issueId: string; priority: number | null; expected: number | null }
+  >({
+    mutationFn: ({ issueId, priority, expected }) =>
+      apiRequest<Issue>("patch", issueUrl(teamId, `/${issueId}`), { priority, expected }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: issuesKey(teamId) }),
+    onError: (error) => {
+      if (error.status === 409) void queryClient.invalidateQueries({ queryKey: issuesKey(teamId) });
+    },
   });
 }
 

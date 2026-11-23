@@ -32,8 +32,8 @@ export function MeetingBar({ teamId, meeting, receivedAt, user }: MeetingBarProp
 
   return (
     <div className="sticky top-[92px] z-20 rounded-2xl border border-border bg-card p-5">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-5">
-        <ol aria-label="Agenda" className="grid min-w-72 flex-1 gap-3 sm:grid-cols-3">
+      <div className="grid items-center gap-5 xl:grid-cols-[minmax(0,1fr)_auto]">
+        <ol aria-label="Agenda" className="grid gap-3 sm:grid-cols-3">
           {meeting.agenda.map((item, index) => {
             const done = index < position;
             const current = index === position;
@@ -61,10 +61,10 @@ export function MeetingBar({ teamId, meeting, receivedAt, user }: MeetingBarProp
                   {done ? <CheckIcon aria-hidden weight="bold" className="size-4" /> : index + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className={cn("block font-semibold", current && "text-primary")}>
+                  <span className={cn("block truncate font-semibold", current && "text-primary")}>
                     {item.label}
                   </span>
-                  <span className="block text-sm text-muted-foreground">
+                  <span className="block whitespace-nowrap text-sm text-muted-foreground">
                     {done ? "Done" : current ? "Now" : "Up next"} · {item.minutes} min
                   </span>
                 </span>
@@ -74,41 +74,47 @@ export function MeetingBar({ teamId, meeting, receivedAt, user }: MeetingBarProp
           })}
         </ol>
 
-        <MeetingTimer meeting={meeting} receivedAt={receivedAt} />
+        <div className="flex flex-wrap items-center gap-4">
+          <MeetingTimer meeting={meeting} receivedAt={receivedAt} />
 
-        {isFacilitator ? (
-          <div className="flex shrink-0 flex-col gap-2">
-            {upcoming ? (
-              <>
+          {isFacilitator ? (
+            <div className="flex shrink-0 flex-col gap-2">
+              {upcoming ? (
+                <>
+                  <CommonButton
+                    type="button"
+                    size="lg"
+                    loading={advance.isPending}
+                    onClick={() =>
+                      advance.mutate(undefined, {
+                        onError: (error) => toast.error(error.message || "Could not move on"),
+                      })
+                    }
+                  >
+                    Next: {upcoming.label}
+                    <ArrowRightIcon aria-hidden weight="bold" />
+                  </CommonButton>
+                  <CommonButton
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setConfirmingEnd(true)}
+                  >
+                    End meeting
+                  </CommonButton>
+                </>
+              ) : (
                 <CommonButton
                   type="button"
                   size="lg"
-                  loading={advance.isPending}
-                  onClick={() =>
-                    advance.mutate(undefined, {
-                      onError: (error) => toast.error(error.message || "Could not move on"),
-                    })
-                  }
+                  variant="dark"
+                  onClick={() => setConfirmingEnd(true)}
                 >
-                  Next: {upcoming.label}
-                  <ArrowRightIcon aria-hidden weight="bold" />
-                </CommonButton>
-                <CommonButton type="button" variant="ghost" onClick={() => setConfirmingEnd(true)}>
                   End meeting
                 </CommonButton>
-              </>
-            ) : (
-              <CommonButton
-                type="button"
-                size="lg"
-                variant="dark"
-                onClick={() => setConfirmingEnd(true)}
-              >
-                End meeting
-              </CommonButton>
-            )}
-          </div>
-        ) : null}
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-4 text-sm text-muted-foreground">

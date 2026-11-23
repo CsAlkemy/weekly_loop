@@ -1,7 +1,8 @@
-import type { ApiError, CreateRockInput, Rock } from "@repo/library";
+import type { ApiError, CreateRockInput, Issue, Rock } from "@repo/library";
 import { apiRequest, apiUrl } from "@repo/library/apis";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { issuesKey } from "@/hooks/use-issues";
 import { teamKey } from "@/hooks/use-teams";
 
 export const rocksKey = (teamId: string) => [...teamKey(teamId), "rocks"] as const;
@@ -34,5 +35,18 @@ export function useSetMilestoneDone(teamId: string) {
         rocksUrl(teamId, `/${rockId}/milestones/${milestoneId}/done`),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: rocksKey(teamId) }),
+  });
+}
+
+export function useMakeIssueFromRock(teamId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<Issue, ApiError, { rockId: string }>({
+    mutationFn: ({ rockId }) => apiRequest<Issue>("post", rocksUrl(teamId, `/${rockId}/issue`)),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: rocksKey(teamId) }),
+        queryClient.invalidateQueries({ queryKey: issuesKey(teamId) }),
+      ]),
   });
 }

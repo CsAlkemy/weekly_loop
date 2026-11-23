@@ -62,6 +62,28 @@ test("a score can be entered, changed and cleared inline", async ({ page }) => {
   await expect(cell(page, /New deals closed, week of Nov 9: no score, Pending/)).toBeVisible();
 });
 
+test("a save based on a score someone else has since changed is refused", async ({ browser }) => {
+  const blake = await signedInBrowser(browser, "Blake Brooks", "Scorecard");
+  const dana = await signedInBrowser(browser, "Dana Diaz", "Scorecard");
+  await expect(blake.getByText("Live", { exact: true })).toBeVisible();
+  const label = "Score for New deals closed, week of Nov 2";
+
+  await cell(blake, /New deals closed, week of Nov 2: 8, Off track/).click();
+  const blakeInput = blake.getByRole("textbox", { name: label });
+  await blakeInput.fill("9");
+
+  await cell(dana, /New deals closed, week of Nov 2: 8, Off track/).click();
+  const danaInput = dana.getByRole("textbox", { name: label });
+  await danaInput.fill("12");
+  await danaInput.press("Enter");
+  await expect(cell(dana, /New deals closed, week of Nov 2: 12, On track/)).toBeVisible();
+
+  await blakeInput.press("Enter");
+  await expect(blake.getByText("Someone else changed this score to 12")).toBeVisible();
+  await expect(cell(blake, /New deals closed, week of Nov 2: 12, On track/)).toBeVisible();
+  await expect(cell(dana, /New deals closed, week of Nov 2: 12, On track/)).toBeVisible();
+});
+
 test("an Observer cannot edit scores", async ({ page }) => {
   await signIn(page, "Ellis Evans");
   await openPage(page, "Scorecard");

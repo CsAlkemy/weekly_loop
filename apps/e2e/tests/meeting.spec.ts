@@ -163,3 +163,39 @@ test("the last meeting's summary can be opened from the meeting page", async ({ 
     "Set payroll reminder",
   );
 });
+
+test("a browser that loses its live connection catches up when it reconnects", async ({
+  browser,
+}) => {
+  const blake = await signedInBrowser(browser, "Blake Brooks");
+  const dana = await signedInBrowser(browser, "Dana Diaz");
+
+  let refuse = false;
+  const sockets: { close: () => Promise<void> }[] = [];
+  await dana.routeWebSocket(/\/api\/ws\//, (socket) => {
+    if (refuse) {
+      void socket.close();
+      return;
+    }
+    sockets.push(socket);
+    socket.connectToServer();
+  });
+  await openMeetingPage(blake);
+  await blake.getByRole("button", { name: "Start meeting" }).click();
+  await openMeetingPage(dana);
+  await dana.reload();
+  await expect(dana.getByText("Live", { exact: true })).toBeVisible();
+  await expect(agendaStep(dana)).toContainText("Scorecard");
+
+  refuse = true;
+  await Promise.all(sockets.map((socket) => socket.close()));
+  await expect(dana.getByText("Connecting", { exact: true })).toBeVisible();
+  await blake.getByRole("button", { name: "Next: IDS" }).click();
+  await expect(agendaStep(blake)).toContainText("IDS");
+  await expect(agendaStep(dana)).toContainText("Scorecard");
+
+  refuse = false;
+  await expect(dana.getByText("Live", { exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(agendaStep(dana)).toContainText("IDS", { timeout: 2000 });
+  await expect(dana).toHaveURL(/\/meeting$/);
+});

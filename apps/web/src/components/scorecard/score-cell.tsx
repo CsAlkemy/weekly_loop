@@ -19,7 +19,7 @@ interface ScoreCellProps {
   highlight?: boolean;
   saving: boolean;
   makingIssue: boolean;
-  onSave: (value: number | null) => void;
+  onSave: (value: number | null, expected: number | null) => void;
   onMakeIssue: () => void;
 }
 
@@ -40,6 +40,7 @@ export function ScoreCell({
   const [draft, setDraft] = useState("");
   const [invalid, setInvalid] = useState(false);
   const settled = useRef(false);
+  const seen = useRef<number | null>(null);
 
   const status = SCORE_STATUS[cell.status];
   const Icon = status.icon;
@@ -52,6 +53,7 @@ export function ScoreCell({
 
   const startEditing = () => {
     settled.current = false;
+    seen.current = cell.value;
     setDraft(cell.value === null ? "" : String(cell.value));
     setInvalid(false);
     setEditing(true);
@@ -64,13 +66,13 @@ export function ScoreCell({
 
   const commit = () => {
     if (settled.current) return;
-    if (draft.trim() === String(cell.value ?? "")) {
+    if (draft.trim() === String(seen.current ?? "")) {
       stopEditing();
       return;
     }
     if (draft.trim() === "") {
       stopEditing();
-      onSave(null);
+      onSave(null, seen.current);
       return;
     }
     const parsed = scoreValueSchema.safeParse(draft);
@@ -79,7 +81,7 @@ export function ScoreCell({
       return;
     }
     stopEditing();
-    onSave(parsed.data);
+    onSave(parsed.data, seen.current);
   };
 
   if (editing) {

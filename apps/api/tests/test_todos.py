@@ -38,6 +38,7 @@ async def test_todos_show_owner_due_date_done_time_and_source_issue(client):
         "createdAt": "2026-10-28T15:35:00Z",
         "overdue": False,
         "sourceIssue": {"id": "i7", "title": "Onboarding docs are outdated"},
+        "openIssueId": None,
     }
     assert todos["t12"]["sourceIssue"] is None
     assert todos["t12"]["doneAt"] is None

@@ -1,19 +1,24 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 
+from app.activity import service as activity
 from app.auth.deps import TeamAccess, Writer
 from app.common.errors import errors
 from app.db.session import SessionDep
+from app.issues.schemas import IssueOut, issue_out
+from app.issues.service import make_issue_from_todo
 from app.realtime.hub import hub
-from app.rules.rules import todo_completion
+from app.rules.rules import is_overdue, todo_completion
 from app.teams.deps import TeamTime
 from app.todos import service
 from app.todos.schemas import TodoCompletionOut, TodoListOut, TodoOut, TodoWeekOut, todo_out
 
 HISTORY_WEEKS = 8
 
-router = APIRouter(prefix="/teams/{team_id}/todos", tags=["todos"], responses=errors(401, 403, 404))
+router = APIRouter(
+    prefix="/teams/{team_id}/todos", tags=["todos"], responses=errors(401, 403, 404, 409)
+)
 
 
 def found(view: service.TodoView | None) -> service.TodoView:
@@ -54,12 +59,50 @@ async def mark_done(
     todo_id: str, team: TeamAccess, user: Writer, time: TeamTime, session: SessionDep
 ):
     view = found(await service.mark_done(session, team.id, todo_id, time.now, user.id))
+    await activity.record(
+        session, team.id, user, "todo.done", f"Marked {view.todo.title} done", time.now
+    )
     await hub.invalidate(team.id, "todos")
     return todo_out(view, time.today)
 
 
 @router.delete("/{todo_id}/done", response_model=TodoOut, summary="Undo a done To-Do")
-async def undo_done(todo_id: str, team: TeamAccess, _: Writer, time: TeamTime, session: SessionDep):
+async def undo_done(
+    todo_id: str, team: TeamAccess, user: Writer, time: TeamTime, session: SessionDep
+):
     view = found(await service.undo_done(session, team.id, todo_id))
+    await activity.record(
+        session, team.id, user, "todo.reopened", f"Reopened {view.todo.title}", time.now
+    )
     await hub.invalidate(team.id, "todos")
     return todo_out(view, time.today)
+
+
+@router.post(
+    "/{todo_id}/issue",
+    response_model=IssueOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={200: {"model": IssueOut, "description": "An unsolved Issue already exists"}},
+    summary="Make it an Issue: create one for an overdue To-Do, or return the open one",
+)
+async def make_it_an_issue(
+    todo_id: str,
+    response: Response,
+    team: TeamAccess,
+    user: Writer,
+    time: TeamTime,
+    session: SessionDep,
+):
+    view = found(await service.get_todo(session, team.id, todo_id))
+    if not is_overdue(view.todo, time.today):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Only an overdue To-Do can become an Issue")
+    issue, created = await make_issue_from_todo(session, team.id, view.todo, user.id, time.now)
+    if created:
+        await activity.record(
+            session, team.id, user, "issue.made", f"Made an Issue: {issue.issue.title}", time.now
+        )
+        await hub.invalidate(team.id, "issues")
+        await hub.invalidate(team.id, "todos")
+    else:
+        response.status_code = status.HTTP_200_OK
+    return issue_out(issue)

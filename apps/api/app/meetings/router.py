@@ -1,20 +1,23 @@
 from fastapi import APIRouter, status
 
+from app.activity import service as activity
 from app.auth.deps import CurrentUser, TeamAccess, Writer
 from app.common.errors import errors
 from app.common.weeks import last_closed_week
 from app.db.session import SessionDep
-from app.meetings import service
+from app.meetings import service, summaries
+from app.meetings.agenda import AGENDA
 from app.meetings.schemas import (
     ActiveMeetingOut,
     MeetingStateOut,
     MeetingSummaryOut,
     RatingIn,
     state_out,
-    summary_out,
 )
 from app.realtime.hub import hub
 from app.teams.deps import TeamTime
+
+SECTION_LABELS = {section: label for section, label, _ in AGENDA}
 
 router = APIRouter(
     prefix="/teams/{team_id}", tags=["meeting"], responses=errors(401, 403, 404, 409)
@@ -46,6 +49,9 @@ async def get_meeting(team: TeamAccess, time: TeamTime, session: SessionDep):
 )
 async def start_meeting(team: TeamAccess, user: Writer, time: TeamTime, session: SessionDep):
     state = await service.start(session, team.id, user, time.now)
+    await activity.record(
+        session, team.id, user, "meeting.started", "Started the Level 10 Meeting", time.now
+    )
     await hub.invalidate(team.id, "meeting")
     return _out(state, time)
 
@@ -64,6 +70,14 @@ async def join_meeting(team: TeamAccess, user: CurrentUser, time: TeamTime, sess
 )
 async def advance_meeting(team: TeamAccess, user: Writer, time: TeamTime, session: SessionDep):
     state = await service.advance(session, team.id, user, time.now)
+    await activity.record(
+        session,
+        team.id,
+        user,
+        "meeting.advanced",
+        f"Moved the meeting to {SECTION_LABELS[state.meeting.section]}",
+        time.now,
+    )
     await hub.invalidate(team.id, "meeting")
     return _out(state, time)
 
@@ -88,14 +102,17 @@ async def rate_meeting(
 )
 async def end_meeting(team: TeamAccess, user: Writer, time: TeamTime, session: SessionDep):
     meeting = await service.end(session, team.id, user, time.now)
+    summary = await summaries.freeze(session, meeting, time.tz)
+    await activity.record(session, team.id, user, "meeting.ended", "Ended the meeting", time.now)
     await hub.invalidate(team.id, "meeting")
-    return summary_out(await service.summarize(session, meeting, time.tz))
+    return summary
 
 
 @router.get(
     "/meetings/{meeting_id}/summary",
     response_model=MeetingSummaryOut,
-    summary="Summary of an ended meeting",
+    summary="Summary of an ended meeting, frozen when it ended",
 )
 async def get_summary(meeting_id: str, team: TeamAccess, time: TeamTime, session: SessionDep):
-    return summary_out(await service.get_summary(session, team.id, meeting_id, time.tz))
+    meeting = await service.ended_meeting(session, team.id, meeting_id)
+    return await summaries.read(session, meeting, time.tz)

@@ -63,6 +63,10 @@ Code layout: [docs/conventions.md](docs/conventions.md).
   To-Do done or solved an Issue.
 - **One page per section** (Overview, Scorecard, Issues, To-Dos, Rocks, Meeting) instead of one
   long Team page, so the side nav links to pages.
+- **Bonus items built:** no lost updates on scores and Issue priority (each save sends the value
+  last seen as `expected`; a stale save gets 409 and the page shows the new value), Make it an
+  Issue from an overdue To-Do or an off-track Rock (same no-duplicates rule), an activity log of
+  who changed what (on the Overview), and the 1,000-companies note in the decision record.
 - **Added on request, beyond the brief:** an Admin Settings page (Users & roles, and the testing
   tools), adding Measurables (they start this week, so earlier weeks are not missed), clearing a
   score, Issue details, a priority filter and sort, and a page per meeting summary. A user cannot
@@ -70,18 +74,17 @@ Code layout: [docs/conventions.md](docs/conventions.md).
 
 ## Known limitations
 
-- Live updates use an in-process hub, so the API runs as one worker. After an API restart the
-  clock resumes from the latest recorded time (never earlier than `APP_NOW`), so a running
-  meeting's section timer restarts near 0:00 instead of keeping its elapsed seconds.
-- Scores and Issue priority are last save wins, with no lost-update protection.
-- Meeting summaries are computed on read; freezing them is described, not built.
+- Live updates go through Postgres `LISTEN/NOTIFY`, so the API runs several workers (two in
+  Docker, `API_WORKERS`). An event sent while a worker's listener is reconnecting is missed; the
+  browser refetches when its own connection comes back. The demo clock is shared in the database.
+- Meeting summaries are frozen when a meeting ends (and at seed time for the seeded meetings).
+- The activity log is written right after each change, not in the same transaction.
 - "Observers own nothing" is enforced by the API, not a database constraint.
 - Every seeded user shares one password, which "Use a demo account" hands out; set
-  `DEMO_ACCOUNTS=false` outside a demo. No sign-up, password reset by email, login rate limit or
-  user removal. Measurables cannot be edited or removed.
+  `DEMO_ACCOUNTS=false` outside a demo. No sign-up, password reset by email or user removal.
+  Five wrong passwords lock that email for 15 minutes. Measurables cannot be edited or removed.
 - Without `SESSION_SECRET` the API generates one and keeps it in `SESSION_SECRET_FILE` (a Docker
-  volume), so a restart does not sign anyone out. The cookie is not marked Secure, so a deployment
-  needs HTTPS and that flag.
+  volume), so a restart does not sign anyone out. Set `SESSION_COOKIE_SECURE=true` behind HTTPS.
 - A role or team change applies on the user's next request; an open page keeps its buttons until
   it reloads. Lists are not paginated.
 

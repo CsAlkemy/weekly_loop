@@ -22,6 +22,7 @@ class RockOut(ApiModel):
     status: RockStatus
     progress_percent: int
     milestones: list[MilestoneOut]
+    open_issue_id: str | None
 
 
 def rock_out(view, today: date) -> RockOut:
@@ -42,4 +43,5 @@ def rock_out(view, today: date) -> RockOut:
             )
             for milestone in view.milestones
         ],
+        open_issue_id=view.open_issue_id,
     )

@@ -14,6 +14,7 @@ class TodoView:
     owner: User
     source_issue: Issue | None
     done_by: User | None
+    open_issue_id: str | None
 
 
 def _open_first_then_recently_done(view: TodoView) -> tuple:
@@ -25,24 +26,32 @@ def _open_first_then_recently_done(view: TodoView) -> tuple:
 
 async def _views(session: AsyncSession, team_id: str, todo_id: str | None = None) -> list[TodoView]:
     done_by = aliased(User)
+    open_issue = aliased(Issue)
     query = (
-        select(Todo, User, Issue, done_by)
+        select(Todo, User, Issue, done_by, open_issue.id)
         .join(User, User.id == Todo.owner_id)
         .outerjoin(Issue, Issue.id == Todo.source_issue_id)
         .outerjoin(done_by, done_by.id == Todo.done_by_id)
+        .outerjoin(
+            open_issue,
+            (open_issue.source_todo_id == Todo.id) & open_issue.solved_at.is_(None),
+        )
         .where(Todo.team_id == team_id)
     )
     if todo_id is not None:
         query = query.where(Todo.id == todo_id)
     rows = (await session.execute(query)).all()
     return [
-        TodoView(todo=todo, owner=owner, source_issue=issue, done_by=by)
-        for todo, owner, issue, by in rows
+        TodoView(
+            todo=todo, owner=owner, source_issue=issue, done_by=by, open_issue_id=open_issue_id
+        )
+        for todo, owner, issue, by, open_issue_id in rows
     ]
 
 
-async def get_todo(session: AsyncSession, team_id: str, todo_id: str) -> TodoView:
-    return (await _views(session, team_id, todo_id))[0]
+async def get_todo(session: AsyncSession, team_id: str, todo_id: str) -> TodoView | None:
+    views = await _views(session, team_id, todo_id)
+    return views[0] if views else None
 
 
 async def list_todos(session: AsyncSession, team_id: str) -> list[TodoView]:

@@ -10,7 +10,7 @@ import { TeamPage } from "@/components/team/team-page";
 import { RockCreateDrawer } from "@/components/test-forms/rock-create-drawer";
 import { useSession } from "@/hooks/use-auth";
 import { useTestForms } from "@/hooks/use-settings";
-import { useRocks, useSetMilestoneDone } from "@/hooks/use-rocks";
+import { useMakeIssueFromRock, useRocks, useSetMilestoneDone } from "@/hooks/use-rocks";
 
 function RockGrid({ teamId }: { teamId: string }) {
   const { data: rocks, isLoading, error } = useRocks(teamId);
@@ -18,7 +18,9 @@ function RockGrid({ teamId }: { teamId: string }) {
   const testForms = useTestForms();
   const setMilestone = useSetMilestoneDone(teamId);
   const [adding, setAdding] = useState(false);
-  const editable = testForms && Boolean(user && canWrite(user.role));
+  const canChange = Boolean(user && canWrite(user.role));
+  const editable = testForms && canChange;
+  const makeIssue = useMakeIssueFromRock(teamId);
 
   const toolbar = editable ? (
     <div className="flex flex-wrap items-center justify-end gap-3">
@@ -62,6 +64,20 @@ function RockGrid({ teamId }: { teamId: string }) {
             key={rock.id}
             rock={rock}
             onToggleMilestone={editable ? toggle(rock.id) : undefined}
+            makingIssue={makeIssue.isPending && makeIssue.variables?.rockId === rock.id}
+            onMakeIssue={
+              canChange
+                ? () =>
+                    makeIssue.mutate(
+                      { rockId: rock.id },
+                      {
+                        onSuccess: (issue) => toast.success(`Added to Issues: ${issue.title}`),
+                        onError: (issueError) =>
+                          toast.error(issueError.message || "Could not make it an Issue"),
+                      },
+                    )
+                : undefined
+            }
           />
         ))}
       </ul>

@@ -19,6 +19,11 @@ class IssueSourceOut(ApiModel):
     week_start: date
 
 
+class IssueLinkOut(ApiModel):
+    id: str
+    title: str
+
+
 class IssueOut(ApiModel):
     id: str
     title: str
@@ -30,6 +35,8 @@ class IssueOut(ApiModel):
     solved_by: UserOut | None
     resolution_note: str | None
     source: IssueSourceOut | None
+    source_todo: IssueLinkOut | None
+    source_rock: IssueLinkOut | None
 
 
 class IssueCreateIn(ApiModel):
@@ -40,6 +47,10 @@ class IssueCreateIn(ApiModel):
 
 class IssuePriorityIn(ApiModel):
     priority: Priority | None
+    expected: Priority | None = Field(
+        description="The priority you last saw, or null for none. "
+        "A change is refused with 409 when it has changed since."
+    )
 
 
 class IssueSolveIn(ApiModel):
@@ -72,4 +83,6 @@ def issue_out(view: IssueView) -> IssueOut:
             if measurable
             else None
         ),
+        source_todo=view.source_todo,
+        source_rock=view.source_rock,
     )

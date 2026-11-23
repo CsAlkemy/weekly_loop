@@ -1,3 +1,4 @@
+export * from "./activity";
 export * from "./issue";
 export * from "./meeting";
 export * from "./realtime";

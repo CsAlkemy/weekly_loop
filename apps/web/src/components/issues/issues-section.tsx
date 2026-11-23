@@ -156,7 +156,7 @@ export function IssuesSection({ teamId, timeZone, title = "Issues" }: IssuesSect
               priorityPending={setPriority.isPending && setPriority.variables?.issueId === issue.id}
               onPriorityChange={(priority) =>
                 setPriority.mutate(
-                  { issueId: issue.id, priority },
+                  { issueId: issue.id, priority, expected: issue.priority },
                   {
                     onError: (error) =>
                       toast.error(error.message || "Could not change the priority"),

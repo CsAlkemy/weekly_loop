@@ -21,6 +21,7 @@ class TodoOut(ApiModel):
     created_at: datetime
     overdue: bool
     source_issue: SourceIssueOut | None
+    open_issue_id: str | None
 
 
 class TodoCompletionOut(ApiModel):
@@ -55,4 +56,5 @@ def todo_out(view: TodoView, today: date) -> TodoOut:
         created_at=todo.created_at,
         overdue=is_overdue(todo, today),
         source_issue=SourceIssueOut(id=issue.id, title=issue.title) if issue else None,
+        open_issue_id=view.open_issue_id,
     )

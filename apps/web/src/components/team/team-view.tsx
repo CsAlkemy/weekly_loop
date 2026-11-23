@@ -1,3 +1,4 @@
+import { ActivityTile } from "@/components/team/activity-tile";
 import { LastWeekScorecard } from "@/components/scorecard/last-week-scorecard";
 import { GoalsChart } from "@/components/team/charts/goals-chart";
 import { IssuesPriorityChart } from "@/components/team/charts/issues-priority-chart";
@@ -31,7 +32,8 @@ export function TeamView({ teamId }: { teamId: string }) {
           <IssuesPriorityChart teamId={team.id} className="min-w-0 md:col-span-2 xl:col-span-4" />
           <TodoTrendChart teamId={team.id} className="min-w-0 md:col-span-2 xl:col-span-6" />
           <RocksChart teamId={team.id} className="min-w-0 md:col-span-2 xl:col-span-6" />
-          <LastWeekScorecard teamId={team.id} className="md:col-span-2 xl:col-span-12" />
+          <LastWeekScorecard teamId={team.id} className="min-w-0 md:col-span-2 xl:col-span-8" />
+          <ActivityTile teamId={team.id} className="min-w-0 md:col-span-2 xl:col-span-4" />
         </div>
       )}
     </TeamPage>

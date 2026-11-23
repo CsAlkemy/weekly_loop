@@ -40,6 +40,8 @@ async def test_issue_shows_owner_priority_created_time_and_source(client):
             "measurableName": "New deals closed",
             "weekStart": "2026-11-02",
         },
+        "sourceTodo": None,
+        "sourceRock": None,
     }
     assert issues["i4"]["priority"] is None
     assert issues["i4"]["source"] is None
@@ -115,7 +117,7 @@ async def test_invalid_issues_are_rejected(client):
 
 async def test_setting_priority_reorders_the_list(client):
     await login(client, "u2")
-    response = await client.patch(f"{URL}/i4", json={"priority": 5})
+    response = await client.patch(f"{URL}/i4", json={"priority": 5, "expected": None})
 
     assert response.status_code == 200
     assert response.json()["priority"] == 5
@@ -124,7 +126,7 @@ async def test_setting_priority_reorders_the_list(client):
 
 async def test_priority_can_be_cleared(client):
     await login(client, "u2")
-    await client.patch(f"{URL}/i2", json={"priority": None})
+    await client.patch(f"{URL}/i2", json={"priority": None, "expected": 5})
 
     assert await issue_ids(client) == ["i1", "i5", "i3", "i4", "i2"]
 
@@ -132,7 +134,7 @@ async def test_priority_can_be_cleared(client):
 async def test_invalid_priority_is_rejected(client):
     await login(client, "u2")
 
-    assert (await client.patch(f"{URL}/i3", json={"priority": 9})).status_code == 422
+    assert (await client.patch(f"{URL}/i3", json={"priority": 9, "expected": 3})).status_code == 422
     assert (await client.patch(f"{URL}/i3", json={})).status_code == 422
 
 
@@ -155,7 +157,7 @@ async def test_solved_issue_cannot_be_solved_or_reprioritised_again(client):
     await login(client, "u2")
 
     assert (await client.post(f"{URL}/i6/solve", json={"note": "Again"})).status_code == 409
-    assert (await client.patch(f"{URL}/i6", json={"priority": 1})).status_code == 409
+    assert (await client.patch(f"{URL}/i6", json={"priority": 1, "expected": 2})).status_code == 409
 
 
 async def test_todo_from_an_issue_is_due_in_7_days_and_linked(client):
@@ -219,7 +221,7 @@ async def test_observer_can_read_but_not_change_issues(client):
     assert (await client.get(URL)).status_code == 200
     writes = [
         await client.post(URL, json={"title": "Observer issue"}),
-        await client.patch(f"{URL}/i3", json={"priority": 5}),
+        await client.patch(f"{URL}/i3", json={"priority": 5, "expected": 3}),
         await client.post(f"{URL}/i3/solve", json={"note": "Done"}),
         await client.post(f"{URL}/i3/todos", json={"title": "x", "ownerId": "u3"}),
     ]
@@ -239,7 +241,9 @@ async def test_issue_from_another_team_is_not_found_through_my_team(client):
     await login(client, "u6")
     base = "/api/teams/team_sales/issues"
 
-    assert (await client.patch(f"{base}/i3", json={"priority": 5})).status_code == 404
+    assert (
+        await client.patch(f"{base}/i3", json={"priority": 5, "expected": 3})
+    ).status_code == 404
     assert (await client.post(f"{base}/i3/solve", json={"note": "x"})).status_code == 404
     response = await client.post(f"{base}/i3/todos", json={"title": "x", "ownerId": "u6"})
     assert response.status_code == 404
@@ -266,10 +270,21 @@ async def test_issue_and_todo_changes_are_published_to_the_team(client):
     try:
         await login(client, "u2")
         await client.post(URL, json={"title": "New"})
-        await client.patch(f"{URL}/i3", json={"priority": 1})
+        await client.patch(f"{URL}/i3", json={"priority": 1, "expected": 3})
         await client.post(f"{URL}/i3/todos", json={"title": "x", "ownerId": "u3"})
         await client.post(f"{URL}/i3/solve", json={"note": "Done"})
     finally:
         hub.leave("team_lead", socket)
 
     assert [event["resource"] for event in socket.events] == ["issues", "issues", "todos", "issues"]
+
+
+async def test_a_priority_change_based_on_a_stale_priority_is_refused(client):
+    await login(client, "u2")
+    assert (await client.patch(f"{URL}/i3", json={"priority": 5, "expected": 3})).status_code == 200
+
+    stale = await client.patch(f"{URL}/i3", json={"priority": 1, "expected": 3})
+    assert stale.status_code == 409
+    assert "changed this Issue's priority to 5" in stale.json()["detail"]
+    assert (await client.patch(f"{URL}/i3", json={"priority": 3})).status_code == 422
+    assert (await client.patch(f"{URL}/i3", json={"priority": 1, "expected": 5})).status_code == 200

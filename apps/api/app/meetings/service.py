@@ -181,7 +181,7 @@ async def end(session: AsyncSession, team_id: str, user: User, now: datetime) ->
     meeting.ended_at = max(now, meeting.started_at)
     meeting.section = None
     meeting.section_started_at = None
-    await session.commit()
+    await session.flush()
     return meeting
 
 
@@ -215,9 +215,7 @@ async def summarize(session: AsyncSession, meeting: Meeting, tz: ZoneInfo) -> Me
     )
 
 
-async def get_summary(
-    session: AsyncSession, team_id: str, meeting_id: str, tz: ZoneInfo
-) -> MeetingSummary:
+async def ended_meeting(session: AsyncSession, team_id: str, meeting_id: str) -> Meeting:
     meeting = await session.scalar(
         select(Meeting).where(
             Meeting.id == meeting_id, Meeting.team_id == team_id, Meeting.ended_at.is_not(None)
@@ -225,4 +223,4 @@ async def get_summary(
     )
     if meeting is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No ended meeting with that id")
-    return await summarize(session, meeting, tz)
+    return meeting

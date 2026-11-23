@@ -5,12 +5,21 @@ import { CaretDownIcon, CheckCircleIcon, CircleIcon } from "@phosphor-icons/reac
 import { formatDate, RockStatus, type Rock } from "@repo/library";
 import { Checkbox, cn, Pill, ProgressBar, StatusBadge } from "@repo/ui";
 
+import { MakeIssueButton } from "@/components/issues/make-issue-button";
+
 interface RockRowProps {
   rock: Rock;
   onToggleMilestone?: (milestoneId: string, done: boolean) => void;
+  makingIssue?: boolean;
+  onMakeIssue?: () => void;
 }
 
-export function RockRow({ rock, onToggleMilestone }: RockRowProps) {
+export function RockRow({
+  rock,
+  onToggleMilestone,
+  makingIssue = false,
+  onMakeIssue,
+}: RockRowProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const doneCount = rock.milestones.filter((milestone) => milestone.done).length;
@@ -60,6 +69,17 @@ export function RockRow({ rock, onToggleMilestone }: RockRowProps) {
           />
         </span>
       </button>
+
+      {rock.openIssueId || (rock.status === RockStatus.OFF_TRACK && onMakeIssue) ? (
+        <div className="-mt-1 px-5 pb-5">
+          <MakeIssueButton
+            subject={rock.title}
+            onIssues={rock.openIssueId !== null}
+            pending={makingIssue}
+            onClick={() => onMakeIssue?.()}
+          />
+        </div>
+      ) : null}
 
       {open ? (
         <div id={panelId} className="mx-5 mb-5 rounded-xl bg-muted p-4">

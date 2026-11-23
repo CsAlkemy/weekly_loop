@@ -17,6 +17,13 @@ export interface Issue {
   solvedBy: User | null;
   resolutionNote: string | null;
   source: IssueSource | null;
+  sourceTodo: IssueLink | null;
+  sourceRock: IssueLink | null;
+}
+
+export interface IssueLink {
+  id: string;
+  title: string;
 }
 
 export type IssueStatus = "unsolved" | "solved";

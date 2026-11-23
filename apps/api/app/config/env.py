@@ -10,13 +10,14 @@ SEED_NOW = datetime(2026, 11, 11, 15, 0, tzinfo=UTC)
 
 
 def stored_secret(path: Path) -> str:
-    if path.exists():
-        return path.read_text().strip()
-    secret = secrets.token_urlsafe(32)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(secret)
-    path.chmod(0o600)
-    return secret
+    try:
+        with path.open("x") as file:
+            file.write(secrets.token_urlsafe(32))
+        path.chmod(0o600)
+    except FileExistsError:
+        pass
+    return path.read_text().strip()
 
 
 class Settings(BaseSettings):
@@ -25,6 +26,9 @@ class Settings(BaseSettings):
     database_url: str
     session_secret: str = ""
     session_secret_file: Path | None = None
+    session_cookie_secure: bool = False
+    login_attempts: int = Field(default=5, ge=1)
+    login_lockout_minutes: int = Field(default=15, ge=1)
     web_origin: str = "http://localhost:3000"
     app_now: datetime = SEED_NOW
     app_clock: Literal["ticking", "frozen"] = "ticking"

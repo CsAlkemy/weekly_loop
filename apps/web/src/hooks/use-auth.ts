@@ -7,7 +7,7 @@ import {
   type LoginInput,
   type User,
 } from "@repo/library";
-import { apiRequest, apiUrl, useApiQuery } from "@repo/library/apis";
+import { apiRequest, apiUrl } from "@repo/library/apis";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { setAuthHint } from "@/lib/auth";
@@ -40,7 +40,12 @@ export function useSession() {
 }
 
 export function useDemoAccounts() {
-  return useApiQuery<DemoAccounts>("auth", "demo-accounts", { retry: false, staleTime: Infinity });
+  return useQuery<DemoAccounts, ApiError>({
+    queryKey: ["auth", "demo-accounts"],
+    queryFn: () => apiRequest<DemoAccounts>("get", apiUrl("auth", "demo-accounts")),
+    retry: false,
+    staleTime: Infinity,
+  });
 }
 
 export function useLogin() {

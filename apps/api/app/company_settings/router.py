@@ -5,6 +5,7 @@ from app.auth.deps import Admin, CurrentUser
 from app.common.clock import clock
 from app.common.errors import errors
 from app.common.schemas import ApiModel
+from app.common.shared_clock import share_clock
 from app.company_settings.deps import test_forms_on
 from app.config.env import settings
 from app.db.models import Company, Team
@@ -72,6 +73,7 @@ async def reset_data(admin: Admin, session: SessionDep):
         await set_test_forms(session, company_id, enabled)
     await session.commit()
     clock.restart()
+    await share_clock(session)
     for team_id in await session.scalars(select(Team.id)):
         for resource in TEAM_RESOURCES:
             await hub.invalidate(team_id, resource)

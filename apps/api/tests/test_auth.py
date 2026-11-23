@@ -118,3 +118,23 @@ async def test_demo_accounts_can_be_turned_off(client, monkeypatch):
     monkeypatch.setattr(settings, "demo_accounts", False)
 
     assert (await client.get("/api/auth/demo-accounts")).status_code == 404
+
+
+async def test_repeated_wrong_passwords_lock_that_email_for_a_while(client):
+    for _ in range(settings.login_attempts):
+        assert (await sign_in(client, AVERY, "not-the-password")).status_code == 401
+
+    locked = await sign_in(client, AVERY, settings.seed_password)
+    assert locked.status_code == 429
+    assert "Too many failed sign-ins" in locked.json()["detail"]
+    assert (await sign_in(client, "blake@acme.test", settings.seed_password)).status_code == 200
+
+
+async def test_a_successful_sign_in_clears_earlier_failures(client):
+    for _ in range(settings.login_attempts - 1):
+        await sign_in(client, AVERY, "not-the-password")
+    assert (await sign_in(client, AVERY, settings.seed_password)).status_code == 200
+
+    for _ in range(settings.login_attempts - 1):
+        await sign_in(client, AVERY, "not-the-password")
+    assert (await sign_in(client, AVERY, settings.seed_password)).status_code == 200

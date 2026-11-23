@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.enums import RockStatus
-from app.db.models import Milestone, Rock, User
+from app.db.models import Issue, Milestone, Rock, User
 from app.rules.rules import rock_progress, rock_status
 
 
@@ -17,6 +17,7 @@ class RockView:
     milestones: list[Milestone]
     status: RockStatus
     progress_percent: int
+    open_issue_id: str | None
 
 
 async def list_rocks(
@@ -27,8 +28,9 @@ async def list_rocks(
     rock_id: str | None = None,
 ) -> list[RockView]:
     query = (
-        select(Rock, User)
+        select(Rock, User, Issue.id)
         .join(User, User.id == Rock.owner_id)
+        .outerjoin(Issue, (Issue.source_rock_id == Rock.id) & Issue.solved_at.is_(None))
         .where(Rock.team_id == team_id)
         .order_by(Rock.id)
     )
@@ -40,7 +42,7 @@ async def list_rocks(
 
     milestones = await session.scalars(
         select(Milestone)
-        .where(Milestone.rock_id.in_([rock.id for rock, _ in rows]))
+        .where(Milestone.rock_id.in_([rock.id for rock, _, _ in rows]))
         .order_by(Milestone.due_date, Milestone.id)
     )
     by_rock: dict[str, list[Milestone]] = defaultdict(list)
@@ -54,6 +56,7 @@ async def list_rocks(
             milestones=by_rock[rock.id],
             status=rock_status(rock, by_rock[rock.id], today),
             progress_percent=rock_progress(rock, by_rock[rock.id]),
+            open_issue_id=open_issue_id,
         )
-        for rock, owner in rows
+        for rock, owner, open_issue_id in rows
     ]

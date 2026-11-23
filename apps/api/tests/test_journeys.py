@@ -67,8 +67,10 @@ async def test_a_new_measurable_reaches_teammates_and_observers_but_not_other_te
             assert (await finley.get(f"{LEAD}/scorecard")).status_code == 403
 
             score_url = f"{LEAD}/measurables/{measurable_id}/scores/2026-11-09"
-            assert (await ellis.put(score_url, json={"value": 30})).status_code == 403
-            scored = await casey.put(score_url, json={"value": 30})
+            assert (
+                await ellis.put(score_url, json={"value": 30, "expected": None})
+            ).status_code == 403
+            scored = await casey.put(score_url, json={"value": 30, "expected": None})
             assert scored.json()["status"] == "on_track"
 
             seen_by_ellis = next(

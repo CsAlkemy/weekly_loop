@@ -38,7 +38,9 @@ async def test_weeks_before_a_measurable_existed_are_not_missed(client):
     await login(client, "u2")
     measurable = (await client.post(URL, json=LEADS)).json()
 
-    scored = await client.put(f"{URL}/{measurable['id']}/scores/2026-11-09", json={"value": 30})
+    scored = await client.put(
+        f"{URL}/{measurable['id']}/scores/2026-11-09", json={"value": 30, "expected": None}
+    )
     assert scored.json()["status"] == "on_track"
     flag = await client.post(f"{URL}/{measurable['id']}/scores/2026-11-02/issue")
     assert flag.status_code == 409
