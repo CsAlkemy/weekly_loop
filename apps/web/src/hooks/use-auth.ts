@@ -1,0 +1,63 @@
+import { useRouter } from "next/router";
+
+import type { ApiError, DemoAccounts, LoginInput, User } from "@repo/library";
+import { apiRequest, apiUrl, useApiQuery } from "@repo/library/apis";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { setAuthHint } from "@/lib/auth";
+
+export const sessionKey = ["session"] as const;
+
+export function useSession() {
+  const query = useQuery<User | null>({
+    queryKey: sessionKey,
+    queryFn: async () => {
+      try {
+        const user = await apiRequest<User>("get", apiUrl("auth", "me"));
+        setAuthHint(true);
+        return user;
+      } catch {
+        setAuthHint(false);
+        return null;
+      }
+    },
+    retry: false,
+    staleTime: Infinity,
+  });
+
+  return {
+    user: query.data ?? null,
+    isAuthenticated: Boolean(query.data),
+    isLoading: query.isLoading,
+  };
+}
+
+export function useDemoAccounts() {
+  return useApiQuery<DemoAccounts>("auth", "demo-accounts", { retry: false, staleTime: Infinity });
+}
+
+export function useLogin() {
+  const queryClient = useQueryClient();
+
+  return useMutation<User, ApiError, LoginInput>({
+    mutationFn: (credentials) => apiRequest<User>("post", apiUrl("auth", "login"), credentials),
+    onSuccess: (user) => {
+      setAuthHint(true);
+      queryClient.setQueryData(sessionKey, user);
+    },
+  });
+}
+
+export function useLogout() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: () => apiRequest<void>("post", apiUrl("auth", "logout")),
+    onSettled: () => {
+      setAuthHint(false);
+      queryClient.clear();
+      void router.replace("/auth/login");
+    },
+  });
+}

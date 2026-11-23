@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: weekly
+      POSTGRES_PASSWORD: weekly
+      POSTGRES_DB: weekly_loop
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weekly -d weekly_loop"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql+psycopg://weekly:weekly@db:5432/weekly_loop
+      TEST_DATABASE_URL: postgresql+psycopg://weekly:weekly@db:5432/weekly_loop_test
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      WEB_ORIGIN: http://localhost:${WEB_PORT:-3000},http://web:3000
+      APP_NOW: ${APP_NOW:-2026-11-11T15:00:00Z}
+      ENABLE_TEST_ROUTES: ${ENABLE_TEST_ROUTES:-false}
+      ENABLE_TEST_TOOLS: ${ENABLE_TEST_TOOLS:-true}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_ORIGIN: http://api:8000
+    environment:
+      API_ORIGIN: http://api:8000
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/auth/login').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  e2e:
+    profiles: ["e2e"]
+    build:
+      context: .
+      dockerfile: apps/e2e/Dockerfile
+    environment:
+      E2E_BASE_URL: http://web:3000
+      CI: "true"
+    volumes:
+      - ./apps/e2e/test-results:/repo/apps/e2e/test-results
+      - ./apps/e2e/playwright-report:/repo/apps/e2e/playwright-report
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  db-data:

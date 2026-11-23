@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+.turbo
+.venv
+bun.lock
+uv.lock
+apps/api/seed/seed.json
+test-results
+playwright-report
+rules_report.json

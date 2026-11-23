@@ -1,0 +1,13 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run uvicorn app.main:app --reload --port 8000",
+    "migrate": "uv run alembic upgrade head",
+    "seed": "uv run python -m app.seed",
+    "rules-report": "uv run python -m app.rules.report",
+    "lint": "uv run ruff check .",
+    "test": "uv run pytest"
+  }
+}
