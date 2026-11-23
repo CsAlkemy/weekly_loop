@@ -3,6 +3,7 @@ from datetime import timedelta
 from fastapi import APIRouter, HTTPException, status
 
 from app.auth.deps import TeamAccess, Writer
+from app.common.errors import errors
 from app.db.session import SessionDep
 from app.realtime.hub import hub
 from app.rules.rules import todo_completion
@@ -12,7 +13,7 @@ from app.todos.schemas import TodoCompletionOut, TodoListOut, TodoOut, TodoWeekO
 
 HISTORY_WEEKS = 8
 
-router = APIRouter(prefix="/teams/{team_id}/todos", tags=["todos"])
+router = APIRouter(prefix="/teams/{team_id}/todos", tags=["todos"], responses=errors(401, 403, 404))
 
 
 def found(view: service.TodoView | None) -> service.TodoView:

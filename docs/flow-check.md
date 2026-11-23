@@ -105,9 +105,9 @@ Testing tools, which has two tools:
   People added on the Users & roles tab are removed and changed passwords go back to the seed
   password. The switch above keeps its position, and open pages refresh.
 
-Both exist only while the API runs with `ENABLE_TEST_TOOLS=true` (on in `docker-compose.yml` for
-now). Set it to `false` for a real deployment: the API then refuses the switch, the reset and the
-test forms. To remove the test forms for good, delete `apps/api/app/test_forms/`,
+Both exist only while the API runs with `ENABLE_TEST_TOOLS=true`. It is off by default, so start
+the app with `ENABLE_TEST_TOOLS=true docker compose up --build` for this walkthrough. When it is
+off, the API refuses the switch, the reset and the test forms, and the tab says so. To remove the test forms for good, delete `apps/api/app/test_forms/`,
 `apps/web/src/components/test-forms/`, `packages/shared/library/schema/test-form-schema.ts`,
 `apps/api/tests/test_test_forms.py` and `apps/e2e/tests/flows.spec.ts`, then drop the references
 the type checker points to.

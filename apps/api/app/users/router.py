@@ -1,11 +1,12 @@
 from fastapi import APIRouter, status
 
 from app.auth.deps import Admin
+from app.common.errors import errors
 from app.db.session import SessionDep
 from app.users import service
 from app.users.schemas import UserCreateIn, UserDetailOut, UserUpdateIn
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"], responses=errors(401, 403, 404, 409))
 
 
 @router.get("", response_model=list[UserDetailOut], summary="Every user in the company (Admin)")

@@ -1,6 +1,7 @@
 # Decision record
 
-The five decisions the brief leaves open (section 2.8), with their tradeoffs.
+The five decisions the brief leaves open (section 2.8), with their tradeoffs, and a note on
+supporting 1,000 companies.
 
 ## 1. Data model and source links
 
@@ -60,3 +61,27 @@ freeze them I would write the computed summary as JSON to a `meeting_summaries` 
 transaction that ends the meeting, and serve that row when it exists. Seeded meetings would be
 snapshotted once at seed time. Tradeoff: the snapshot duplicates data and needs a version field if
 its shape changes, but history stops depending on mutable rows.
+
+## 6. Supporting 1,000 companies (bonus note)
+
+The model is already multi-company: every user and team has a `company_id`, and every team-scoped
+row carries `team_id`, so one database can hold many companies.
+
+- **Isolation.** Team access, team lists and user management are scoped to the user's company; an
+  Admin of one company is refused another company's team (tested). The next step is Postgres
+  row-level security on `company_id` as a second guard against a missed filter.
+- **Size.** At about 10 teams and 50 users a company, that is 50,000 users and a few million scores
+  and To-Dos a year: small for one Postgres. Reads are per team and use the `team_id` indexes;
+  I would add `(team_id, due_date)` on To-Dos and `(team_id, solved_at)` on Issues, and page the
+  lists, which today are not paginated.
+- **Live updates.** The in-process hub needs one API worker. With several workers (or instances)
+  each publishes `invalidate` through Postgres `LISTEN/NOTIFY` (Redis pub/sub if it gets busy) and
+  fans it out to its own sockets. Messages carry no data, so a lost one costs a refresh at worst.
+- **Time.** Each company keeps its own time zone, which every rule already takes. The demo clock
+  (`APP_NOW`) becomes the real clock.
+- **Computed values.** Rates and statuses are computed on read per team, which stays cheap at this
+  size. Meeting summaries would be frozen when a meeting ends (section 5) so history is not
+  recomputed.
+- **What goes.** Reset to seed data truncates every table and the shared seed password signs in
+  every seeded user; both are demo tools behind `ENABLE_TEST_TOOLS` and `DEMO_ACCOUNTS`, off for a
+  real deployment.

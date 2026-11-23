@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, status
 
 from app.auth.deps import TeamAccess, Writer
+from app.common.errors import errors
 from app.db.session import SessionDep
 from app.issues import service
 from app.issues.schemas import (
@@ -17,7 +18,9 @@ from app.realtime.hub import hub
 from app.teams.deps import TeamTime
 from app.todos.schemas import TodoOut, todo_out
 
-router = APIRouter(prefix="/teams/{team_id}/issues", tags=["issues"])
+router = APIRouter(
+    prefix="/teams/{team_id}/issues", tags=["issues"], responses=errors(401, 403, 404, 409)
+)
 
 
 @router.get(

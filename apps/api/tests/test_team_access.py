@@ -1,3 +1,4 @@
+from app.db.models import Company, Team
 from tests.conftest import login
 
 
@@ -29,6 +30,19 @@ async def test_admin_can_open_every_team(client):
     assert [team["id"] for team in response.json()] == ["team_lead", "team_ops", "team_sales"]
     assert (await client.get("/api/teams/team_ops")).status_code == 200
     assert (await client.get("/api/teams/team_unknown")).status_code == 404
+
+
+async def test_admin_cannot_open_another_companys_team(client, db):
+    db.add(Company(id="co_2", name="Other Co", timezone="Europe/London"))
+    await db.flush()
+    db.add(Team(id="team_other", company_id="co_2", name="Other team"))
+    await db.commit()
+
+    await login(client, "u1")
+    teams = [team["id"] for team in (await client.get("/api/teams")).json()]
+    assert "team_other" not in teams
+    assert (await client.get("/api/teams/team_other")).status_code == 403
+    assert (await client.get("/api/teams/team_other/issues")).status_code == 403
 
 
 async def test_observer_can_read_their_team(client):

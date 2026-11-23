@@ -4,6 +4,7 @@ set -eu
 cd "$(dirname "$0")/.."
 
 export ENABLE_TEST_ROUTES=true
+export ENABLE_TEST_TOOLS=true
 
 docker compose up --detach --build --wait db api web
 docker compose exec -T api pytest

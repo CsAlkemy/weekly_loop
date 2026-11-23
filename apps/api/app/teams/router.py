@@ -1,11 +1,12 @@
 from fastapi import APIRouter
 
 from app.auth.deps import CurrentUser, TeamAccess
+from app.common.errors import errors
 from app.db.session import SessionDep
 from app.teams import service
 from app.teams.schemas import TeamDetailOut, TeamOut
 
-router = APIRouter(prefix="/teams", tags=["teams"])
+router = APIRouter(prefix="/teams", tags=["teams"], responses=errors(401, 403, 404))
 
 
 @router.get("", response_model=list[TeamOut], summary="Teams the current user can open")

@@ -3,6 +3,7 @@ from sqlalchemy import select, update
 
 from app.auth.deps import Admin, CurrentUser
 from app.common.clock import clock
+from app.common.errors import errors
 from app.common.schemas import ApiModel
 from app.company_settings.deps import test_forms_on
 from app.config.env import settings
@@ -11,7 +12,7 @@ from app.db.session import SessionDep
 from app.realtime.hub import hub
 from app.seed import reset_to_seed
 
-router = APIRouter(prefix="/settings", tags=["settings"])
+router = APIRouter(prefix="/settings", tags=["settings"], responses=errors(401, 403, 409))
 
 TEAM_RESOURCES = ("scorecard", "issues", "todos", "rocks", "meeting")
 

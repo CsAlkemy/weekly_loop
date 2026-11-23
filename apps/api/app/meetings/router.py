@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status
 
 from app.auth.deps import CurrentUser, TeamAccess, Writer
+from app.common.errors import errors
 from app.common.weeks import last_closed_week
 from app.db.session import SessionDep
 from app.meetings import service
@@ -15,7 +16,9 @@ from app.meetings.schemas import (
 from app.realtime.hub import hub
 from app.teams.deps import TeamTime
 
-router = APIRouter(prefix="/teams/{team_id}", tags=["meeting"])
+router = APIRouter(
+    prefix="/teams/{team_id}", tags=["meeting"], responses=errors(401, 403, 404, 409)
+)
 
 
 def _out(state: service.MeetingState, time: TeamTime) -> MeetingStateOut:

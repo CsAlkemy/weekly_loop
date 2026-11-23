@@ -9,12 +9,13 @@ from app.db.models import Company, Membership, Team, User
 
 async def has_team_access(session: AsyncSession, user: User, team_id: str) -> bool:
     if user.role == Role.ADMIN:
-        return True
+        team = await session.get(Team, team_id)
+        return team is None or team.company_id == user.company_id
     return await session.get(Membership, (user.id, team_id)) is not None
 
 
 async def list_accessible_teams(session: AsyncSession, user: User) -> Sequence[Team]:
-    query = select(Team).order_by(Team.name)
+    query = select(Team).where(Team.company_id == user.company_id).order_by(Team.name)
     if user.role != Role.ADMIN:
         query = query.join(Membership, Membership.team_id == Team.id).where(
             Membership.user_id == user.id

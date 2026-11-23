@@ -7,11 +7,12 @@ from sqlalchemy import func, select
 from app.auth.deps import CurrentUser, start_session
 from app.auth.passwords import verify_password
 from app.auth.schemas import DemoAccountsOut, LoginIn, UserOut
+from app.common.errors import errors
 from app.config.env import settings
 from app.db.models import User
 from app.db.session import SessionDep
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"], responses=errors(401, 404))
 
 
 @router.get(

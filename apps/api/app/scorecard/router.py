@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 
 from app.auth.deps import TeamAccess, Writer
 from app.common.enums import MeasurableStatus
+from app.common.errors import errors
 from app.common.weeks import CompanyTime, recent_weeks, week_start
 from app.db.session import SessionDep
 from app.issues.schemas import IssueOut, issue_out
@@ -21,7 +22,9 @@ from app.scorecard.schemas import (
 )
 from app.teams.deps import TeamTime
 
-router = APIRouter(prefix="/teams/{team_id}", tags=["scorecard"])
+router = APIRouter(
+    prefix="/teams/{team_id}", tags=["scorecard"], responses=errors(401, 403, 404, 409)
+)
 
 
 def measurable_out(row: service.MeasurableRow) -> MeasurableOut:

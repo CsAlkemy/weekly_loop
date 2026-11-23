@@ -1,12 +1,13 @@
 from fastapi import APIRouter
 
 from app.auth.deps import TeamAccess
+from app.common.errors import errors
 from app.db.session import SessionDep
 from app.rocks import service
 from app.rocks.schemas import RockOut, rock_out
 from app.teams.deps import TeamTime
 
-router = APIRouter(prefix="/teams/{team_id}/rocks", tags=["rocks"])
+router = APIRouter(prefix="/teams/{team_id}/rocks", tags=["rocks"], responses=errors(401, 403, 404))
 
 
 @router.get("", response_model=list[RockOut], summary="Current quarter's Rocks with Milestones")

@@ -24,7 +24,7 @@ services:
       WEB_ORIGIN: http://localhost:${WEB_PORT:-3000},http://web:3000
       APP_NOW: ${APP_NOW:-2026-11-11T15:00:00Z}
       ENABLE_TEST_ROUTES: ${ENABLE_TEST_ROUTES:-false}
-      ENABLE_TEST_TOOLS: ${ENABLE_TEST_TOOLS:-true}
+      ENABLE_TEST_TOOLS: ${ENABLE_TEST_TOOLS:-false}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:

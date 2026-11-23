@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app.auth.deps import TeamAccess, Writer
 from app.common.enums import RockStatus
+from app.common.errors import errors
 from app.common.ids import new_id
 from app.common.schemas import ApiModel
 from app.company_settings.deps import require_test_forms
@@ -21,7 +22,10 @@ from app.todos.schemas import TodoOut, todo_out
 from app.todos.service import get_todo
 
 router = APIRouter(
-    prefix="/teams/{team_id}", tags=["test forms"], dependencies=[Depends(require_test_forms)]
+    prefix="/teams/{team_id}",
+    tags=["test forms"],
+    dependencies=[Depends(require_test_forms)],
+    responses=errors(401, 403, 404),
 )
 
 
